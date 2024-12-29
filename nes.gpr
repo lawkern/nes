@@ -1,0 +1,25 @@
+--------------------------------------------------------------------------------
+-- (c) copyright 2024 Lawrence D. Kern /////////////////////////////////////////
+--------------------------------------------------------------------------------
+
+project Nes is
+   for Main        use ("main");
+   for Source_Dirs use ("src");
+   for Object_Dir  use "obj";
+   for Exec_Dir    use "build";
+
+   Shared := ("-g", "-gnata", "-gnatef");
+
+   package Builder is
+      for Default_Switches ("Ada") use Shared & ("-f", "-q", "-gnat2022");
+      for Executable ("main.adb") use "nes";
+   end Builder;
+
+   package Compiler is
+      for Default_Switches ("Ada") use Shared;
+   end Compiler;
+
+   package Pretty_Printer is
+      for Default_Switches ("Ada") use ("--source-line-breaks");
+   end Pretty_Printer;
+end Nes;
