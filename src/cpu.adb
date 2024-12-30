@@ -48,6 +48,11 @@ package body CPU is
          Break_Command := True;
       end BRK;
 
+      procedure NOP is
+      begin
+         Put_Line ("NOP");
+      end NOP;
+
       procedure LDA (Value : U8) is
       begin
          Put_Line ("LDA");
@@ -78,6 +83,10 @@ package body CPU is
             Instruction_Length := 2; -- NOTE: BRK skips the following byte on return.
             Cycle_Count        := 7;
             BRK;
+
+         when 16#EA# => -- NOP
+            Cycle_Count := 2;
+            NOP;
 
          when 16#A9# => -- LDA #Immediate
             Instruction_Length := 2;
