@@ -119,6 +119,62 @@ package body CPU is
 
       -------------------------------------------------------------------------
 
+      procedure TAX is
+      begin
+         Put_Line ("TAX");
+         Index_Register_X := Accumulator;
+
+         Zero_Flag     := (Index_Register_X = 0);
+         Negative_Flag := (Shift_Right (Index_Register_X, 7) and 1) = 1;
+      end TAX;
+
+      procedure TAY is
+      begin
+         Put_Line ("TAY");
+         Index_Register_Y := Accumulator;
+
+         Zero_Flag     := (Index_Register_Y = 0);
+         Negative_Flag := (Shift_Right (Index_Register_Y, 7) and 1) = 1;
+      end TAY;
+
+      procedure TSX is
+      begin
+         Put_Line ("TSX");
+         Index_Register_X := Stack_Pointer;
+
+         Zero_Flag     := (Index_Register_X = 0);
+         Negative_Flag := (Shift_Right (Index_Register_X, 7) and 1) = 1;
+      end TSX;
+
+      procedure TXA is
+      begin
+         Put_Line ("TXA");
+         Accumulator := Index_Register_X;
+
+         Zero_Flag     := (Accumulator = 0);
+         Negative_Flag := (Shift_Right (Accumulator, 7) and 1) = 1;
+      end TXA;
+
+      procedure TXS is
+      begin
+         Put_Line ("TXS");
+         Stack_Pointer := Index_Register_X;
+
+         Zero_Flag     := (Stack_Pointer = 0);
+         Negative_Flag := (Shift_Right (Stack_Pointer, 7) and 1) = 1;
+      end TXS;
+
+      procedure TYA is
+      begin
+         Put_Line ("TYA");
+         Accumulator := Index_Register_Y;
+
+         Zero_Flag     := (Accumulator = 0);
+         Negative_Flag := (Shift_Right (Accumulator, 7) and 1) = 1;
+      end TYA;
+
+      -------------------------------------------------------------------
+
       procedure Print_Instruction is
       begin
          Put ("   Instruction     : ");
@@ -419,6 +475,40 @@ package body CPU is
             Data1 := Memory (Program_Counter + 1);
             Data2 := Memory (Program_Counter + 2);
             STY (Merge (Low => Data1, High => Data2));
+
+            --------------------------------------------------------------------
+
+         when 16#AA# => -- TAX
+            Instruction_Length := 1;
+            Cycle_Count        := 2;
+            TAX;
+
+         when 16#A8# => -- TAY
+            Instruction_Length := 1;
+            Cycle_Count        := 2;
+            TAY;
+
+         when 16#BA# => -- TSX
+            Instruction_Length := 1;
+            Cycle_Count        := 2;
+            TSX;
+
+         when 16#8A# => -- TXA
+            Instruction_Length := 1;
+            Cycle_Count        := 2;
+            TXA;
+
+         when 16#9A# => -- TXS
+            Instruction_Length := 1;
+            Cycle_Count        := 2;
+            TXS;
+
+         when 16#98# => -- TYA
+            Instruction_Length := 1;
+            Cycle_Count        := 2;
+            TYA;
+
+            --------------------------------------------------------------------
 
          when others =>
             Put_Line ("*Unhandled Instruction*");
