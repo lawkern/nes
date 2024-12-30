@@ -41,18 +41,37 @@ package body CPU is
 
    -----------------------------------------------------------------------------
 
+   function Merge (Low, High : U8) return U16 is
+   begin
+      return Shift_Left (U16 (High), 8) + U16 (Low);
+   end Merge;
+
+   -----------------------------------------------------------------------------
+
    function Decode_And_Execute return Integer is
+      Unimplemented_Instruction : exception;
+
+      Instruction, Family, Mode, Modifier : U8;
+
+      Cycle_Count        : Integer := 0;
+      Instruction_Length : Integer := 1;
+
+      Data1, Data2 : U8 := 0;
+
+      ------------------------------------------------------------------------
       procedure BRK is
       begin
          Put_Line ("BRK");
          Break_Command := True;
       end BRK;
 
+      -------------------------------------------------------------------------
       procedure NOP is
       begin
          Put_Line ("NOP");
       end NOP;
 
+      -------------------------------------------------------------------------
       procedure LDA (Value : U8) is
       begin
          Put_Line ("LDA");
@@ -62,21 +81,49 @@ package body CPU is
          Negative_Flag := (Shift_Right (Value, 7) and 1) = 1;
       end LDA;
 
-      function Merge (Low, High : U8) return U16 is
+      --------------------------------------------------------------------------
+
+      procedure Print_Instruction is
       begin
-         return Shift_Left (U16 (High), 8) + U16 (Low);
-      end Merge;
+         Put ("   Instruction     : ");
+         U8_IO.Put (Instruction, Base => 16);
+         New_Line;
 
-      Instruction, Family, Mode, Modifier : U8;
+         Put ("   Family          : ");
+         U8_IO.Put (Family, Base => 2);
+         New_Line;
 
-      Cycle_Count        : Integer := 0;
-      Instruction_Length : Integer := 1;
+         Put ("   Addressing Mode : ");
+         U8_IO.Put (Mode, Base => 2);
+         New_Line;
 
-      Data1, Data2 : U8 := 0;
+         Put ("   Modifier        : ");
+         U8_IO.Put (Modifier, Base => 2);
+         New_Line;
+
+         if Instruction_Length > 1 then
+            Put ("   Data Byte 1     : ");
+            U8_IO.Put (Data1, Base => 16);
+            New_Line;
+         end if;
+
+         if Instruction_Length > 2 then
+            Put ("   Data Byte 2     : ");
+            U8_IO.Put (Data2, Base => 16);
+            New_Line;
+         end if;
+
+         New_Line;
+      end Print_Instruction;
+
+      --------------------------------------------------------------------------
    begin
       Put_Line ("---------------------------------------------------");
 
       Instruction := Memory (Program_Counter);
+      Family      := Shift_Right (Instruction, 5) and 2#000_0111#;
+      Mode        := Shift_Right (Instruction, 2) and 2#000_0111#;
+      Modifier    := Shift_Right (Instruction, 0) and 2#000_0011#;
 
       case Instruction is
          when 16#00# => -- BRK
@@ -153,28 +200,12 @@ package body CPU is
 
          when others =>
             Put_Line ("*Unhandled Instruction*");
+            Print_Instruction;
+
+            raise Unimplemented_Instruction;
       end case;
 
-      Put ("   Instruction     : ");
-      U8_IO.Put (Instruction, Base => 16);
-      New_Line;
-
-      Family   := Shift_Right (Instruction, 5) and 2#000_0111#;
-      Mode     := Shift_Right (Instruction, 2) and 2#000_0111#;
-      Modifier := Shift_Right (Instruction, 0) and 2#000_0011#;
-
-      Put ("   Family          : ");
-      U8_IO.Put (Family, Base => 2);
-      New_Line;
-
-      Put ("   Addressing Mode : ");
-      U8_IO.Put (Mode, Base => 2);
-      New_Line;
-
-      Put ("   Modifier        : ");
-      U8_IO.Put (Modifier, Base => 2);
-      New_Line (2);
-
+      Print_Instruction;
       Program_Counter := Program_Counter + U16 (Instruction_Length);
 
       return Cycle_Count;
