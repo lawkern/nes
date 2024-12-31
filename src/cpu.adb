@@ -3,6 +3,31 @@
 --------------------------------------------------------------------------------
 
 package body CPU is
+
+   procedure Power_On is
+   begin
+      Accumulator      := 0;
+      Index_Register_X := 0;
+      Index_Register_Y := 0;
+
+      Program_Counter := 16#FFFC#;
+      Stack_Pointer   := 16#FD#;
+
+      Carry_Flag        := False;
+      Zero_Flag         := False;
+      Interrupt_Disable := True;
+      Decimal_Mode      := False;
+      Overflow_Flag     := False;
+      Negative_Flag     := False;
+   end Power_On;
+
+   procedure Reset is
+   begin
+      Program_Counter   := 16#FFFC#;
+      Stack_Pointer     := Stack_Pointer - 3;
+      Interrupt_Disable := True;
+   end Reset;
+
    -----------------------------------------------------------------------------
 
    procedure Print_Registers is

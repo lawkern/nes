@@ -2,39 +2,41 @@
 -- (c) copyright 2024 Lawrence D. Kern /////////////////////////////////////////
 --------------------------------------------------------------------------------
 
-with Ada.Text_IO;
+with Ada.Text_IO; use Ada.Text_IO;
+
 with CPU; use CPU;
 
 procedure Main is
    Cycles : Integer := 0;
+
+   type Instruction_Stream is array (Natural range <>) of U8;
+   Program : constant Instruction_Stream :=
+     (16#A9#, 16#12#, -- LDA 0x12
+      16#A9#, 16#00#, -- LDA 0x00
+      16#A9#, 16#34#, -- LDA 0x34
+      16#A9#, 16#FF#, -- LDA 0xFF
+      16#EA#,         -- NOP
+      16#EA#,         -- NOP
+      16#EA#,         -- NOP
+      16#00#,         -- BRK
+      16#EA#);        -- NOP
 begin
-   Ada.Text_IO.Put_Line ("---------------------------------------------------");
-   Ada.Text_IO.Put_Line ("-- NES EMULATOR ///////////////////////////////////");
-   Ada.Text_IO.Put_Line ("---------------------------------------------------");
+   Put_Line ("---------------------------------------------------");
+   Put_Line ("-- NES EMULATOR ///////////////////////////////////");
+   Put_Line ("---------------------------------------------------");
 
-   CPU.Program_Counter := 16#8000#;
-
-   CPU.Memory (CPU.Program_Counter + 0)  := 16#A9#;
-   CPU.Memory (CPU.Program_Counter + 1)  := 16#12#;
-   CPU.Memory (CPU.Program_Counter + 2)  := 16#A9#;
-   CPU.Memory (CPU.Program_Counter + 3)  := 16#00#;
-   CPU.Memory (CPU.Program_Counter + 4)  := 16#A9#;
-   CPU.Memory (CPU.Program_Counter + 5)  := 16#34#;
-   CPU.Memory (CPU.Program_Counter + 6)  := 16#A9#;
-   CPU.Memory (CPU.Program_Counter + 7)  := 16#FF#;
-   CPU.Memory (CPU.Program_Counter + 8)  := 16#EA#;
-   CPU.Memory (CPU.Program_Counter + 9)  := 16#EA#;
-   CPU.Memory (CPU.Program_Counter + 10) := 16#EA#;
-   CPU.Memory (CPU.Program_Counter + 11) := 16#00#;
-   CPU.Memory (CPU.Program_Counter + 12) := 16#EA#;
-
+   CPU.Power_On;
    CPU.Print_Registers;
+
+   for Index in Program'Range loop
+      CPU.Memory (CPU.Program_Counter + U16 (Index)) := Program (Index);
+   end loop;
 
    while not CPU.Break_Command loop
       Cycles := Cycles + CPU.Decode_And_Execute;
       CPU.Print_Registers;
    end loop;
 
-   Ada.Text_IO.Put_Line ("---------------------------------------------------");
-   Ada.Text_IO.Put_Line ("TOTAL CYCLES: " & Cycles'Image);
+   Put_Line ("---------------------------------------------------");
+   Put_Line ("TOTAL CYCLES: " & Cycles'Image);
 end Main;

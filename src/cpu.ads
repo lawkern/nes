@@ -273,6 +273,8 @@ package CPU is
 
       others => ("???", 0, 0, 0));
 
+   procedure Power_On;
+   procedure Reset;
    procedure Print_Registers;
    function Decode_And_Execute return Integer;
 
