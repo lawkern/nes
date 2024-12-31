@@ -598,6 +598,40 @@ package body CPU is
 
       ---------------------------------------------------------------
 
+      procedure CLC is
+      begin
+         Carry_Flag := False;
+      end CLC;
+      procedure SEC is
+      begin
+         Carry_Flag := True;
+      end SEC;
+
+      procedure CLI is
+      begin
+         Interrupt_Disable := False;
+      end CLI;
+      procedure SEI is
+      begin
+         Interrupt_Disable := True;
+      end SEI;
+
+      procedure CLD is
+      begin
+         Decimal_Mode := False;
+      end CLD;
+      procedure SED is
+      begin
+         Decimal_Mode := True;
+      end SED;
+
+      procedure CLV is
+      begin
+         Overflow_Flag := False;
+      end CLV;
+
+         ---------------------------------------------------------------
+
       procedure Print_Instruction is
       begin
          Put ("   Instruction     : ");
@@ -807,6 +841,14 @@ package body CPU is
          when 16#28# =>PLP;
          when 16#BA# =>TSX;
          when 16#9A# =>TXS;
+
+         when 16#18# =>CLC;
+         when 16#38# =>SEC;
+         when 16#58# =>CLI;
+         when 16#78# =>SEI;
+         when 16#D8# =>CLD;
+         when 16#F8# =>SED;
+         when 16#B8# =>CLV;
 
          when others =>raise Unimplemented_Instruction;
       end case;

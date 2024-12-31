@@ -72,7 +72,7 @@ package CPU is
    -- TODO: Branch     BCC   BCS   BEQ   BNE   BPL   BMI   BVC   BVS
    -- DONE: Jump       JMP   JSR   RTS   BRK   RTI
    -- DONE: Stack      PHA   PLA   PHP   PLP   TXS   TSX
-   -- TODO: Flags      CLC   SEC   CLI   SEI   CLD   SED   CLV
+   -- DONE: Flags      CLC   SEC   CLI   SEI   CLD   SED   CLV
    -- DONE: Other      NO
 
    type Instruction_Table is array (U8) of Instruction_Info;
@@ -182,6 +182,7 @@ package CPU is
       16#6E# => ("ROR", Bytes => 3, Cycles => 6, Page_Cross_Penalty => 0),
       16#7E# => ("ROR", Bytes => 3, Cycles => 7, Page_Cross_Penalty => 0),
 
+      -- NOTE: Bitwise instructions.
       16#29# => ("AND", Bytes => 2, Cycles => 2, Page_Cross_Penalty => 0),
       16#25# => ("AND", Bytes => 2, Cycles => 3, Page_Cross_Penalty => 0),
       16#35# => ("AND", Bytes => 2, Cycles => 4, Page_Cross_Penalty => 0),
@@ -212,8 +213,6 @@ package CPU is
       16#24# => ("BIT", Bytes => 2, Cycles => 3, Page_Cross_Penalty => 0),
       16#2C# => ("BIT", Bytes => 3, Cycles => 4, Page_Cross_Penalty => 0),
 
-      -- NOTE: Bitwise instructions.
-
       -- NOTE: Compare instructions.
       16#C9# => ("CMP", Bytes => 2, Cycles => 2, Page_Cross_Penalty => 0),
       16#C5# => ("CMP", Bytes => 2, Cycles => 3, Page_Cross_Penalty => 0),
@@ -232,7 +231,7 @@ package CPU is
       16#C4# => ("CPY", Bytes => 2, Cycles => 3, Page_Cross_Penalty => 0),
       16#CC# => ("CPY", Bytes => 3, Cycles => 4, Page_Cross_Penalty => 0),
 
-      -- NOTE: Stack instructions.
+      -- TODO: Branch instructions.
 
 
       -- NOTE: Jump instructions.
@@ -251,11 +250,14 @@ package CPU is
       16#BA# => ("TSX", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
       16#9A# => ("TXS", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
 
-      -- NOTE: Flags instructions.
-
-
-
-
+      -- NOTE: Flag instructions.
+      16#18# => ("CLC", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
+      16#38# => ("SEC", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
+      16#58# => ("CLI", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
+      16#78# => ("SEI", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
+      16#D8# => ("CLD", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
+      16#F8# => ("SED", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
+      16#B8# => ("CLV", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
 
       others => ("???", 0, 0, 0));
 
