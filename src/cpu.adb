@@ -46,6 +46,40 @@ package body CPU is
       return Shift_Left (U16 (High), 8) + U16 (Low);
    end Merge;
 
+   procedure Push8 (Value : U8) is
+   begin
+      Stack_Pointer := Stack_Pointer - 1;
+
+      Memory (Stack_Base - U16 (Stack_Pointer)) := Value;
+   end Push8;
+
+   procedure Push16 (Value : U16) is
+   begin
+      Stack_Pointer := Stack_Pointer - 2;
+
+      Memory (Stack_Base - U16 (Stack_Pointer) + 0) := U8 (Shift_Right (Value, 8) and 16#00FF#);
+      Memory (Stack_Base - U16 (Stack_Pointer) + 1) := U8 (Shift_Right (Value, 0) and 16#00FF#);
+   end Push16;
+
+   function Pop8 return U8 is
+      Result : U8;
+   begin
+      Result := Memory (Stack_Base - U16 (Stack_Pointer));
+
+      Stack_Pointer := Stack_Pointer + 1;
+      return Result;
+   end Pop8;
+
+   function Pop16 return U16 is
+      High, Low : U8;
+   begin
+      Low  := Memory (Stack_Base - U16 (Stack_Pointer + 0));
+      High := Memory (Stack_Base - U16 (Stack_Pointer + 1));
+
+      Stack_Pointer := Stack_Pointer + 2;
+      return Merge (High => High, Low => Low);
+   end Pop16;
+
    -----------------------------------------------------------------------------
 
    function Decode_And_Execute return Integer is
@@ -57,13 +91,6 @@ package body CPU is
       Instruction_Length : Integer := 1;
 
       Data1, Data2 : U8 := 0;
-
-      ------------------------------------------------------------------------
-      procedure BRK is
-      begin
-         Put_Line ("BRK");
-         Break_Command := True;
-      end BRK;
 
       -------------------------------------------------------------------------
       procedure NOP is
@@ -117,7 +144,7 @@ package body CPU is
          Memory (Address) := Index_Register_Y;
       end STY;
 
-      -------------------------------------------------------------------------
+      ------------------------------------------------------------------------
 
       procedure TAX is
       begin
@@ -175,6 +202,53 @@ package body CPU is
 
       -------------------------------------------------------------------
 
+      procedure JMP (Address : U16) is
+      begin
+         Put_Line ("JMP");
+         Program_Counter := Address;
+      end JMP;
+
+      procedure JSR (Address : U16) is
+      begin
+         Put_Line ("JSR");
+         Push16 (Program_Counter + 2);
+         Program_Counter := Address;
+      end JSR;
+
+      procedure BRK is
+      begin
+         Put_Line ("BRK");
+         Break_Command := True;
+      end BRK;
+
+      procedure RTS is
+      begin
+         Put_Line ("RTS");
+         Program_Counter := Pop16 + 1;
+      end RTS;
+
+      procedure RTI is
+      begin
+         Put_Line ("RTI");
+
+         declare
+            Flags : U8;
+         begin
+            Flags := Pop8;
+
+            Carry_Flag        := (Flags and 2#0000_0001#) /= 0;
+            Zero_Flag         := (Flags and 2#0000_0010#) /= 0;
+            Interrupt_Disable := (Flags and 2#0000_0100#) /= 0;
+            Decimal_Mode      := (Flags and 2#0000_1000#) /= 0;
+            Overflow_Flag     := (Flags and 2#0100_0000#) /= 0;
+            Negative_Flag     := (Flags and 2#1000_0000#) /= 0;
+
+            Program_Counter := Pop16;
+         end;
+      end RTI;
+
+      -----------------------------------------------------------------
+
       procedure Print_Instruction is
       begin
          Put ("   Instruction     : ");
@@ -218,11 +292,6 @@ package body CPU is
       Modifier    := Shift_Right (Instruction, 0) and 2#000_0011#;
 
       case Instruction is
-         when 16#00# => -- BRK
-            Instruction_Length := 2; -- NOTE: BRK skips the following byte on return.
-            Cycle_Count        := 7;
-            BRK;
-
          when 16#EA# => -- NOP
             Cycle_Count := 2;
             NOP;
@@ -510,6 +579,50 @@ package body CPU is
 
             --------------------------------------------------------------------
 
+         when 16#4C# => -- JMP Absolute
+            Instruction_Length := 3;
+            Cycle_Count        := 3;
+
+            Data1 := Memory (Program_Counter + 1);
+            Data2 := Memory (Program_Counter + 2);
+            JMP (Merge (Low => Data1, High => Data2));
+
+         when 16#6C# => -- JMP (Indirect)
+            Instruction_Length := 3;
+            Cycle_Count        := 5;
+
+            Data1 := Memory (Program_Counter + 1);
+            Data2 := Memory (Program_Counter + 2);
+            declare
+               Base : U16 := Merge (Low => Data1, High => Data2);
+            begin
+               JMP (Merge (Low => Memory (Base + 0), High => Memory (Base + 1)));
+            end;
+
+         when 16#20# => -- JSR
+            Instruction_Length := 3;
+            Cycle_Count        := 6;
+
+            Data1 := Memory (Program_Counter + 1);
+            Data2 := Memory (Program_Counter + 2);
+            JSR (Merge (Low => Data1, High => Data2));
+
+         when 16#60# => -- RTS
+            Instruction_Length := 1;
+            Cycle_Count        := 6;
+            RTS;
+
+         when 16#00# => -- BRK
+            Instruction_Length := 2; -- NOTE: BRK skips the following byte on return.
+            Cycle_Count        := 7;
+            BRK;
+
+         when 16#40# => -- RTI
+            Instruction_Length := 1;
+            Cycle_Count        := 6;
+            RTI;
+
+            --------------------------------------------------------------------
          when others =>
             Put_Line ("*Unhandled Instruction*");
             Print_Instruction;

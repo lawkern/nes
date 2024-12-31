@@ -33,6 +33,11 @@ package CPU is
    type Memory_Map is array (U16) of U8;
    Memory : Memory_Map;
 
+   -- NOTE: The 256-byte stack grows downward from 01FF to 0100, indexed by the
+   -- 8-bit Stack_Pointer register.
+   Stack_Base : constant U16 := 16#01FF#;
+   Stack_Top  : constant U16 := 16#0100#;
+
    procedure Print_Registers;
    function Decode_And_Execute return Integer;
 
