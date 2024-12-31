@@ -6,7 +6,7 @@
 -- -----------------------------------
 -- DONE: Access     LDA   STA   LDX   STX   LDY   STY
 -- DONE: Transfer   TAX   TXA   TAY   TYA
--- TODO: Arithmetic ADC   SBC   INC   DEC   INX   DEX   INY   DEY
+-- DONE: Arithmetic ADC   SBC   INC   DEC   INX   DEX   INY   DEY
 -- TODO: Shift      ASL   LSR   ROL   ROR
 -- TODO: Bitwise    AND   ORA   EOR   BIT
 -- DONE: Compare    CMP   CPX   CPY
@@ -60,6 +60,11 @@ package body CPU is
    begin
       return Shift_Left (U16 (High), 8) + U16 (Low);
    end Merge;
+
+   function Negative (Value : U8) return Boolean is
+   begin
+      return (Shift_Right (Value, 7) and 1) = 1;
+   end Negative;
 
    -- NOTE: The following set of functions are intended to handle the different
    -- addressing modes used by 6502 instructions. They pull one or more
@@ -139,7 +144,7 @@ package body CPU is
    function Indirect_Address return U16 is
       Base : U16;
    begin
-      Base := Merge (Low  => Memory (Program_Counter + 1),
+      Base := Merge (Low => Memory (Program_Counter + 1),
                      High => Memory (Program_Counter + 2));
 
       return Merge (Low  => Memory (Base + 0),
@@ -155,7 +160,7 @@ package body CPU is
       Base : U16;
    begin
       Base := U16 (Memory (Program_Counter + 1)) + U16 (Index_Register_X);
-      return Merge (Low  => Memory (Base + 0), High => Memory (Base + 1));
+      return Merge (Low => Memory (Base + 0), High => Memory (Base + 1));
    end Indirect_X_Address;
 
    function Indirect_X return U8 is
@@ -236,7 +241,7 @@ package body CPU is
          Accumulator := Value;
 
          Zero_Flag     := (Value = 0);
-         Negative_Flag := (Shift_Right (Value, 7) and 1) = 1;
+         Negative_Flag := Negative (Value);
       end LDA;
 
       procedure LDX (Value : U8) is
@@ -245,7 +250,7 @@ package body CPU is
          Index_Register_X := Value;
 
          Zero_Flag     := (Value = 0);
-         Negative_Flag := (Shift_Right (Value, 7) and 1) = 1;
+         Negative_Flag := Negative (Value);
       end LDX;
 
       procedure LDY (Value : U8) is
@@ -254,7 +259,7 @@ package body CPU is
          Index_Register_Y := Value;
 
          Zero_Flag     := (Value = 0);
-         Negative_Flag := (Shift_Right (Value, 7) and 1) = 1;
+         Negative_Flag := Negative (Value);
       end LDY;
 
       procedure STA (Address : U16) is
@@ -283,7 +288,7 @@ package body CPU is
          Index_Register_X := Accumulator;
 
          Zero_Flag     := (Index_Register_X = 0);
-         Negative_Flag := (Shift_Right (Index_Register_X, 7) and 1) = 1;
+         Negative_Flag := Negative (Index_Register_X);
       end TAX;
 
       procedure TAY is
@@ -292,7 +297,7 @@ package body CPU is
          Index_Register_Y := Accumulator;
 
          Zero_Flag     := (Index_Register_Y = 0);
-         Negative_Flag := (Shift_Right (Index_Register_Y, 7) and 1) = 1;
+         Negative_Flag := Negative (Index_Register_Y);
       end TAY;
 
       procedure TSX is
@@ -301,7 +306,7 @@ package body CPU is
          Index_Register_X := Stack_Pointer;
 
          Zero_Flag     := (Index_Register_X = 0);
-         Negative_Flag := (Shift_Right (Index_Register_X, 7) and 1) = 1;
+         Negative_Flag := Negative (Index_Register_X);
       end TSX;
 
       procedure TXA is
@@ -310,7 +315,7 @@ package body CPU is
          Accumulator := Index_Register_X;
 
          Zero_Flag     := (Accumulator = 0);
-         Negative_Flag := (Shift_Right (Accumulator, 7) and 1) = 1;
+         Negative_Flag := Negative (Accumulator);
       end TXA;
 
       procedure TXS is
@@ -319,7 +324,7 @@ package body CPU is
          Stack_Pointer := Index_Register_X;
 
          Zero_Flag     := (Stack_Pointer = 0);
-         Negative_Flag := (Shift_Right (Stack_Pointer, 7) and 1) = 1;
+         Negative_Flag := Negative (Stack_Pointer);
       end TXS;
 
       procedure TYA is
@@ -328,39 +333,130 @@ package body CPU is
          Accumulator := Index_Register_Y;
 
          Zero_Flag     := (Accumulator = 0);
-         Negative_Flag := (Shift_Right (Accumulator, 7) and 1) = 1;
+         Negative_Flag := Negative (Accumulator);
       end TYA;
 
       -------------------------------------------------------------------
 
+      procedure ADC (Value : U8) is
+         Result : U16;
+      begin
+         Put_Line ("ADC");
+         Result := U16 (Accumulator) + U16 (Value);
+         if Carry_Flag then
+            Result := Result + 1;
+         end if;
+
+         Accumulator := U8 (Result mod 256);
+
+         Carry_Flag    := (Result > 16#FF#);
+         Zero_Flag     := (Result = 0);
+         Overflow_Flag := ((Result xor U16 (Accumulator)) and (Result xor U16 (Value)) and 16#80#) /= 0;
+         Negative_Flag := Negative (Accumulator);
+      end ADC;
+
+      procedure SBC (Value : U8) is
+         Result : U16;
+      begin
+         Put_Line ("SBC");
+         Result := U16 (Accumulator) - U16 (Value);
+         if Carry_Flag then
+            Result := Result - (not 1);
+         end if;
+
+         Carry_Flag    := (Result > U16 (Value));
+         Zero_Flag     := (Result = 0);
+         Overflow_Flag := ((Result xor U16 (Accumulator)) and (Result xor (not U16 (Value))) and 16#80#) /= 0;
+         Negative_Flag := Negative (Accumulator);
+      end SBC;
+
+      procedure INC (Address : U16) is
+      begin
+         Put_Line ("INC");
+         Memory (Address) := Memory (Address) + 1;
+
+         Zero_Flag     := (Memory (Address) = 0);
+         Negative_Flag := Negative (Memory (Address));
+      end INC;
+
+      procedure DEC (Address : U16) is
+      begin
+         Put_Line ("DEC");
+         Memory (Address) := Memory (Address) - 1;
+
+         Zero_Flag     := (Memory (Address) = 0);
+         Negative_Flag := Negative (Memory (Address));
+      end DEC;
+
+      procedure INX is
+      begin
+         Put_Line ("INX");
+         Index_Register_X := Index_Register_X + 1;
+
+         Zero_Flag     := (Index_Register_X = 0);
+         Negative_Flag := Negative (Index_Register_X);
+      end INX;
+
+      procedure DEX is
+      begin
+         Put_Line ("DEX");
+         Index_Register_X := Index_Register_X - 1;
+
+         Zero_Flag     := (Index_Register_X = 0);
+         Negative_Flag := Negative (Index_Register_X);
+      end DEX;
+
+      procedure INY is
+      begin
+         Put_Line ("INY");
+         Index_Register_Y := Index_Register_Y + 1;
+
+         Zero_Flag     := (Index_Register_Y = 0);
+         Negative_Flag := Negative (Index_Register_Y);
+      end INY;
+
+      procedure DEY is
+      begin
+         Put_Line ("DEY");
+         Index_Register_Y := Index_Register_Y - 1;
+
+         Zero_Flag     := (Index_Register_Y = 0);
+         Negative_Flag := Negative (Index_Register_Y);
+      end DEY;
+
+      -----------------------------------------------------------------
+
       procedure CMP (Value : U8) is
          Result : U8;
       begin
+         Put_Line ("CMP");
          Result := Value - Accumulator;
 
          Carry_Flag    := (Accumulator >= Value);
          Zero_Flag     := (Result = 0);
-         Negative_Flag := (Shift_Right (Result, 7) and 1) = 1;
+         Negative_Flag := Negative (Result);
       end CMP;
 
       procedure CPX (Value : U8) is
          Result : U8;
       begin
+         Put_Line ("CPX");
          Result := Value - Index_Register_X;
 
          Carry_Flag    := (Accumulator >= Value);
          Zero_Flag     := (Result = 0);
-         Negative_Flag := (Shift_Right (Result, 7) and 1) = 1;
+         Negative_Flag := Negative (Result);
       end CPX;
 
       procedure CPY (Value : U8) is
          Result : U8;
       begin
+         Put_Line ("CPY");
          Result := Value - Index_Register_Y;
 
          Carry_Flag    := (Accumulator >= Value);
          Zero_Flag     := (Result = 0);
-         Negative_Flag := (Shift_Right (Result, 7) and 1) = 1;
+         Negative_Flag := Negative (Result);
       end CPY;
 
       ----------------------------------------------------------------
@@ -707,6 +803,148 @@ package body CPU is
             Bytes  := 1;
             Cycles := 2;
             TYA;
+
+            --------------------------------------------------------------------
+
+         when 16#69# => -- ADC #Immediate
+            Bytes  := 2;
+            Cycles := 2;
+            ADC (Immediate);
+
+         when 16#65# => -- ADC Zero Page
+            Bytes  := 2;
+            Cycles := 3;
+            ADC (Zero_Page);
+
+         when 16#75# => -- ADC Zero Page,X
+            Bytes  := 2;
+            Cycles := 4;
+            ADC (Zero_Page_X);
+
+         when 16#6D# => -- ADC Absolute
+            Bytes  := 3;
+            Cycles := 4;
+            ADC (Absolute);
+
+         when 16#7D# => -- ADC Absolute,X
+            Bytes  := 3;
+            Cycles := 4; -- TODO: 5 if page crossed.
+            ADC (Absolute_X);
+
+         when 16#79# => -- ADC Absolute,Y
+            Bytes  := 3;
+            Cycles := 4; -- TODO: 5 if page crossed.
+            ADC (Absolute_Y);
+
+         when 16#61# => -- ADC (Indirect,X)
+            Bytes  := 2;
+            Cycles := 6;
+            ADC (Indirect_X);
+
+         when 16#71# => -- ADC (Indirect),Y
+            Bytes  := 2;
+            Cycles := 5; -- TODO: 6 if page crossed.
+            ADC (Indirect_Y);
+
+         when 16#E9# => -- SBC #Immediate
+            Bytes  := 2;
+            Cycles := 2;
+            SBC (Immediate);
+
+         when 16#E5# => -- SBC Zero Page
+            Bytes  := 2;
+            Cycles := 3;
+            SBC (Zero_Page);
+
+         when 16#F5# => -- SBC Zero Page,X
+            Bytes  := 2;
+            Cycles := 4;
+            SBC (Zero_Page_X);
+
+         when 16#ED# => -- SBC Absolute
+            Bytes  := 3;
+            Cycles := 4;
+            SBC (Absolute);
+
+         when 16#FD# => -- SBC Absolute,X
+            Bytes  := 3;
+            Cycles := 4; -- TODO: 5 if page crossed.
+            SBC (Absolute_X);
+
+         when 16#F9# => -- SBC Absolute,Y
+            Bytes  := 3;
+            Cycles := 4; -- TODO: 5 if page crossed.
+            SBC (Absolute_Y);
+
+         when 16#E1# => -- SBC (Indirect,X)
+            Bytes  := 2;
+            Cycles := 6;
+            SBC (Indirect_X);
+
+         when 16#F1# => -- SBC (Indirect),Y
+            Bytes  := 2;
+            Cycles := 5; -- TODO: 6 if page crossed.
+            SBC (Indirect_Y);
+
+         when 16#E6# => -- INC Zero Page
+            Bytes  := 2;
+            Cycles := 5;
+            INC (Zero_Page_Address);
+
+         when 16#F6# => -- INC Zero Page,X
+            Bytes  := 2;
+            Cycles := 6;
+            INC (Zero_Page_X_Address);
+
+         when 16#EE# => -- INC Absolute
+            Bytes  := 3;
+            Cycles := 6;
+            INC (Absolute_Address);
+
+         when 16#FE# => -- INC Absolute_X
+            Bytes  := 3;
+            Cycles := 7;
+            INC (Absolute_X_Address);
+
+         when 16#C6# => -- DEC Zero Page
+            Bytes  := 2;
+            Cycles := 5;
+            DEC (Zero_Page_Address);
+
+         when 16#D6# => -- DEC Zero Page,X
+            Bytes  := 2;
+            Cycles := 6;
+            DEC (Zero_Page_X_Address);
+
+         when 16#CE# => -- DEC Absolute
+            Bytes  := 3;
+            Cycles := 6;
+            DEC (Absolute_Address);
+
+         when 16#DE# => -- DEC Absolute,X
+            Bytes  := 3;
+            Cycles := 7;
+            DEC (Absolute_X_Address);
+
+         when 16#E8# => -- INX
+            Bytes  := 1;
+            Cycles := 2;
+            INX;
+
+         when 16#CA# => -- DEX
+            Bytes  := 1;
+            Cycles := 2;
+            DEX;
+
+         when 16#C8# => -- INY
+            Bytes  := 1;
+            Cycles := 2;
+            INY;
+
+         when 16#88# => -- DEY
+            Bytes  := 1;
+            Cycles := 2;
+            DEY;
 
             --------------------------------------------------------------------
 
