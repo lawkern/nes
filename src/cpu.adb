@@ -10,6 +10,7 @@ package body CPU is
       U8_IO.Default_Base  := 16;
       U16_IO.Default_Base := 16;
 
+      Put_Line ("-------------------------");
       Put ("PC : ");
       U16_IO.Put (Program_Counter);
       New_Line;
@@ -28,8 +29,8 @@ package body CPU is
 
       Put ("Y  : ");
       U8_IO.Put (Index_Register_Y);
-      New_Line (2);
-
+      New_Line;
+      Put_Line ("-------------------------");
       Put_Line ("Carry_Flag        : " & Carry_Flag'Image);
       Put_Line ("Zero_Flag         : " & Zero_Flag'Image);
       Put_Line ("Interrupt_Disable : " & Interrupt_Disable'Image);
@@ -37,6 +38,7 @@ package body CPU is
       Put_Line ("Break_Command     : " & Break_Command'Image);
       Put_Line ("Overflow_Flag     : " & Overflow_Flag'Image);
       Put_Line ("Negative_Flag     : " & Negative_Flag'Image);
+      Put_Line ("-------------------------");
    end Print_Registers;
 
    -----------------------------------------------------------------------------
@@ -65,6 +67,11 @@ package body CPU is
    begin
       return Memory (Program_Counter + 1);
    end Immediate;
+
+   function Relative return U8 is
+   begin
+      return Memory (Program_Counter + 1);
+   end Relative;
 
    function Zero_Page return U16 is
    begin
@@ -175,13 +182,12 @@ package body CPU is
       -------------------------------------------------------------------------
       procedure NOP is
       begin
-         Put_Line ("NOP");
+         null;
       end NOP;
 
       -------------------------------------------------------------------------
       procedure LDA (Value : U8) is
       begin
-         Put_Line ("LDA");
          Accumulator := Value;
 
          Zero_Flag     := (Value = 0);
@@ -190,7 +196,6 @@ package body CPU is
 
       procedure LDX (Value : U8) is
       begin
-         Put_Line ("LDX");
          Index_Register_X := Value;
 
          Zero_Flag     := (Value = 0);
@@ -199,7 +204,6 @@ package body CPU is
 
       procedure LDY (Value : U8) is
       begin
-         Put_Line ("LDY");
          Index_Register_Y := Value;
 
          Zero_Flag     := (Value = 0);
@@ -208,19 +212,16 @@ package body CPU is
 
       procedure STA (Address : U16) is
       begin
-         Put_Line ("STA");
          Memory (Address) := Accumulator;
       end STA;
 
       procedure STX (Address : U16) is
       begin
-         Put_Line ("STX");
          Memory (Address) := Index_Register_X;
       end STX;
 
       procedure STY (Address : U16) is
       begin
-         Put_Line ("STY");
          Memory (Address) := Index_Register_Y;
       end STY;
 
@@ -228,7 +229,6 @@ package body CPU is
 
       procedure TAX is
       begin
-         Put_Line ("TAX");
          Index_Register_X := Accumulator;
 
          Zero_Flag     := (Index_Register_X = 0);
@@ -237,7 +237,6 @@ package body CPU is
 
       procedure TAY is
       begin
-         Put_Line ("TAY");
          Index_Register_Y := Accumulator;
 
          Zero_Flag     := (Index_Register_Y = 0);
@@ -246,7 +245,6 @@ package body CPU is
 
       procedure TSX is
       begin
-         Put_Line ("TSX");
          Index_Register_X := Stack_Pointer;
 
          Zero_Flag     := (Index_Register_X = 0);
@@ -255,7 +253,6 @@ package body CPU is
 
       procedure TXA is
       begin
-         Put_Line ("TXA");
          Accumulator := Index_Register_X;
 
          Zero_Flag     := (Accumulator = 0);
@@ -264,7 +261,6 @@ package body CPU is
 
       procedure TXS is
       begin
-         Put_Line ("TXS");
          Stack_Pointer := Index_Register_X;
 
          Zero_Flag     := (Stack_Pointer = 0);
@@ -273,7 +269,6 @@ package body CPU is
 
       procedure TYA is
       begin
-         Put_Line ("TYA");
          Accumulator := Index_Register_Y;
 
          Zero_Flag     := (Accumulator = 0);
@@ -285,7 +280,6 @@ package body CPU is
       procedure ADC (Value : U8) is
          Result : U16;
       begin
-         Put_Line ("ADC");
          Result := U16 (Accumulator) + U16 (Value);
          if Carry_Flag then
             Result := Result + 1;
@@ -302,7 +296,6 @@ package body CPU is
       procedure SBC (Value : U8) is
          Result : U16;
       begin
-         Put_Line ("SBC");
          Result := U16 (Accumulator) - U16 (Value);
          if Carry_Flag then
             Result := Result - (not 1);
@@ -316,7 +309,6 @@ package body CPU is
 
       procedure INC (Value : in out U8) is
       begin
-         Put_Line ("INC");
          Value := Value + 1;
 
          Zero_Flag     := (Value = 0);
@@ -325,7 +317,6 @@ package body CPU is
 
       procedure DEC (Value : in out U8) is
       begin
-         Put_Line ("DEC");
          Value := Value - 1;
 
          Zero_Flag     := (Value = 0);
@@ -334,7 +325,6 @@ package body CPU is
 
       procedure INX is
       begin
-         Put_Line ("INX");
          Index_Register_X := Index_Register_X + 1;
 
          Zero_Flag     := (Index_Register_X = 0);
@@ -343,7 +333,6 @@ package body CPU is
 
       procedure DEX is
       begin
-         Put_Line ("DEX");
          Index_Register_X := Index_Register_X - 1;
 
          Zero_Flag     := (Index_Register_X = 0);
@@ -352,7 +341,6 @@ package body CPU is
 
       procedure INY is
       begin
-         Put_Line ("INY");
          Index_Register_Y := Index_Register_Y + 1;
 
          Zero_Flag     := (Index_Register_Y = 0);
@@ -361,7 +349,6 @@ package body CPU is
 
       procedure DEY is
       begin
-         Put_Line ("DEY");
          Index_Register_Y := Index_Register_Y - 1;
 
          Zero_Flag     := (Index_Register_Y = 0);
@@ -469,7 +456,6 @@ package body CPU is
       procedure CMP (Value : U8) is
          Result : U8;
       begin
-         Put_Line ("CMP");
          Result := Value - Accumulator;
 
          Carry_Flag    := (Accumulator >= Value);
@@ -480,7 +466,6 @@ package body CPU is
       procedure CPX (Value : U8) is
          Result : U8;
       begin
-         Put_Line ("CPX");
          Result := Value - Index_Register_X;
 
          Carry_Flag    := (Accumulator >= Value);
@@ -491,7 +476,6 @@ package body CPU is
       procedure CPY (Value : U8) is
          Result : U8;
       begin
-         Put_Line ("CPY");
          Result := Value - Index_Register_Y;
 
          Carry_Flag    := (Accumulator >= Value);
@@ -499,58 +483,119 @@ package body CPU is
          Negative_Flag := Negative (Result);
       end CPY;
 
+      ---------------------------------------------------------------
+
+      procedure Branch (Offset : U8) is
+         Signed_Offset : S8;
+         Signed_Result : S16;
+      begin
+         Signed_Offset := S8'Val (Offset);
+         Signed_Result := S16'Val (Program_Counter) + 2 + S16 (Signed_Offset);
+
+         Program_Counter := U16'Val (Signed_Result);
+
+         -- NOTE: Branches that are taken consume an extra cycle.
+         Bytes := Bytes + 1;
+      end Branch;
+
+      procedure BCC (Offset : U8) is
+      begin
+         if not Carry_Flag then
+            Branch (Offset);
+         end if;
+      end BCC;
+
+      procedure BCS (Offset : U8) is
+      begin
+         if Carry_Flag then
+            Branch (Offset);
+         end if;
+      end BCS;
+
+      procedure BEQ (Offset : U8) is
+      begin
+         if Zero_Flag then
+            Branch (Offset);
+         end if;
+      end BEQ;
+
+      procedure BNE (Offset : U8) is
+      begin
+         if not Zero_Flag then
+            Branch (Offset);
+         end if;
+      end BNE;
+
+      procedure BPL (Offset : U8) is
+      begin
+         if not Negative_Flag then
+            Branch (Offset);
+         end if;
+      end BPL;
+
+      procedure BMI (Offset : U8) is
+      begin
+         if Negative_Flag then
+            Branch (Offset);
+         end if;
+      end BMI;
+
+      procedure BVC (Offset : U8) is
+      begin
+         if not Overflow_Flag then
+            Branch (Offset);
+         end if;
+      end BVC;
+
+      procedure BVS (Offset : U8) is
+      begin
+         if Overflow_Flag then
+            Branch (Offset);
+         end if;
+      end BVS;
+
       ----------------------------------------------------------------
 
       procedure JMP (Address : U16) is
       begin
-         Put_Line ("JMP");
          Program_Counter := Address;
       end JMP;
 
       procedure JSR (Address : U16) is
       begin
-         Put_Line ("JSR");
          Push16 (Program_Counter + 2);
          Program_Counter := Address;
       end JSR;
 
       procedure BRK is
       begin
-         Put_Line ("BRK");
          Break_Command := True;
       end BRK;
 
       procedure RTS is
       begin
-         Put_Line ("RTS");
          Program_Counter := Pop16 + 1;
       end RTS;
 
       procedure RTI is
+         Flags : U8;
       begin
-         Put_Line ("RTI");
+         Flags := Pop8;
 
-         declare
-            Flags : U8;
-         begin
-            Flags := Pop8;
+         Carry_Flag        := (Flags and Carry_Flag_Bit) /= 0;
+         Zero_Flag         := (Flags and Zero_Flag_Bit) /= 0;
+         Interrupt_Disable := (Flags and Interrupt_Disable_Bit) /= 0;
+         Decimal_Mode      := (Flags and Decimal_Mode_Bit) /= 0;
+         Overflow_Flag     := (Flags and Overflow_Flag_Bit) /= 0;
+         Negative_Flag     := (Flags and Negative_Flag_Bit) /= 0;
 
-            Carry_Flag        := (Flags and Carry_Flag_Bit) /= 0;
-            Zero_Flag         := (Flags and Zero_Flag_Bit) /= 0;
-            Interrupt_Disable := (Flags and Interrupt_Disable_Bit) /= 0;
-            Decimal_Mode      := (Flags and Decimal_Mode_Bit) /= 0;
-            Overflow_Flag     := (Flags and Overflow_Flag_Bit) /= 0;
-            Negative_Flag     := (Flags and Negative_Flag_Bit) /= 0;
-
-            Program_Counter := Pop16;
-         end;
+         Program_Counter := Pop16;
       end RTI;
 
       -----------------------------------------------------------------
 
       procedure PHA is
       begin
-         Put_Line ("PHA");
          Push8 (Accumulator);
       end PHA;
 
@@ -569,13 +614,11 @@ package body CPU is
             return Result;
          end Pack_Flags;
       begin
-         Put_Line ("PHP");
          Push8 (Pack_Flags);
       end PHP;
 
       procedure PLA is
       begin
-         Put_Line ("PLA");
          Accumulator := Pop8;
 
          Zero_Flag     := (Accumulator = 0);
@@ -585,7 +628,6 @@ package body CPU is
       procedure PLP is
          Flags : U8;
       begin
-         Put_Line ("PLP");
          Flags := Pop8;
 
          Carry_Flag        := (Flags and Carry_Flag_Bit) /= 0;
@@ -630,7 +672,7 @@ package body CPU is
          Overflow_Flag := False;
       end CLV;
 
-         ---------------------------------------------------------------
+      ---------------------------------------------------------------
 
       procedure Print_Instruction is
       begin
@@ -676,9 +718,6 @@ package body CPU is
 
       Cycles := Instructions (Instruction).Cycles;
       Bytes  := Instructions (Instruction).Bytes;
-
-      Put_Line (String (Instructions (Instruction).Symbol));
-      Print_Instruction;
 
       case Instruction is
          when 16#EA# =>NOP;
@@ -828,6 +867,15 @@ package body CPU is
          when 16#C4# =>CPY (Memory (Zero_Page));
          when 16#CC# =>CPY (Memory (Absolute));
 
+         when 16#90# =>BCC (Relative);
+         when 16#B0# =>BCS (Relative);
+         when 16#F0# =>BEQ (Relative);
+         when 16#D0# =>BNE (Relative);
+         when 16#10# =>BPL (Relative);
+         when 16#30# =>BMI (Relative);
+         when 16#50# =>BVC (Relative);
+         when 16#70# =>BVS (Relative);
+
          when 16#4C# =>JMP (Absolute);
          when 16#6C# =>JMP (Indirect);
          when 16#20# =>JSR (Absolute);
@@ -852,6 +900,9 @@ package body CPU is
 
          when others =>raise Unimplemented_Instruction;
       end case;
+
+      Put_Line (String (Instructions (Instruction).Symbol));
+      Print_Instruction;
 
       Program_Counter := Program_Counter + U16 (Bytes);
 

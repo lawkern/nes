@@ -11,6 +11,11 @@ package CPU is
    type U32 is new Unsigned_32;
    type U64 is new Unsigned_64;
 
+   type S8 is new Integer_8;
+   type S16 is new Integer_16;
+   type S32 is new Integer_32;
+   type S64 is new Integer_64;
+
    package U8_IO is new Ada.Text_IO.Modular_IO (U8);
    package U16_IO is new Ada.Text_IO.Modular_IO (U16);
 
@@ -69,7 +74,7 @@ package CPU is
    -- DONE: Shift      ASL   LSR   ROL   ROR
    -- DONE: Bitwise    AND   ORA   EOR   BIT
    -- DONE: Compare    CMP   CPX   CPY
-   -- TODO: Branch     BCC   BCS   BEQ   BNE   BPL   BMI   BVC   BVS
+   -- DONE: Branch     BCC   BCS   BEQ   BNE   BPL   BMI   BVC   BVS
    -- DONE: Jump       JMP   JSR   RTS   BRK   RTI
    -- DONE: Stack      PHA   PLA   PHP   PLP   TXS   TSX
    -- DONE: Flags      CLC   SEC   CLI   SEI   CLD   SED   CLV
@@ -231,8 +236,15 @@ package CPU is
       16#C4# => ("CPY", Bytes => 2, Cycles => 3, Page_Cross_Penalty => 0),
       16#CC# => ("CPY", Bytes => 3, Cycles => 4, Page_Cross_Penalty => 0),
 
-      -- TODO: Branch instructions.
-
+      -- NOTE: Branch instructions.
+      16#90# => ("BCC", Bytes => 2, Cycles => 2, Page_Cross_Penalty => 1),
+      16#B0# => ("BCS", Bytes => 2, Cycles => 2, Page_Cross_Penalty => 1),
+      16#F0# => ("BEQ", Bytes => 2, Cycles => 2, Page_Cross_Penalty => 1),
+      16#D0# => ("BNE", Bytes => 2, Cycles => 2, Page_Cross_Penalty => 1),
+      16#10# => ("BPL", Bytes => 2, Cycles => 2, Page_Cross_Penalty => 1),
+      16#30# => ("BMI", Bytes => 2, Cycles => 2, Page_Cross_Penalty => 1),
+      16#50# => ("BVC", Bytes => 2, Cycles => 2, Page_Cross_Penalty => 1),
+      16#70# => ("BVS", Bytes => 2, Cycles => 2, Page_Cross_Penalty => 1),
 
       -- NOTE: Jump instructions.
       16#4C# => ("JMP", Bytes => 3, Cycles => 3, Page_Cross_Penalty => 0),
