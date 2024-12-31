@@ -2,6 +2,21 @@
 -- (c) copyright 2024 Lawrence D. Kern /////////////////////////////////////////
 --------------------------------------------------------------------------------
 
+-- Official instructions to implement:
+-- -----------------------------------
+-- DONE: Access     LDA   STA   LDX   STX   LDY   STY
+-- DONE: Transfer   TAX   TXA   TAY   TYA
+-- TODO: Arithmetic ADC   SBC   INC   DEC   INX   DEX   INY   DEY
+-- TODO: Shift      ASL   LSR   ROL   ROR
+-- TODO: Bitwise    AND   ORA   EOR   BIT
+-- DONE: Compare    CMP   CPX   CPY
+-- TODO: Branch     BCC   BCS   BEQ   BNE   BPL   BMI   BVC   BVS
+-- DONE: Jump       JMP   JSR   RTS   BRK   RTI
+-- DONE: Stack      PHA   PLA   PHP   PLP   TXS   TSX
+-- TODO: Flags      CLC   SEC   CLI   SEI   CLD   SED   CLV
+-- DONE: Other      NOP
+
+
 package body CPU is
    -----------------------------------------------------------------------------
 
@@ -46,6 +61,122 @@ package body CPU is
       return Shift_Left (U16 (High), 8) + U16 (Low);
    end Merge;
 
+   -- NOTE: The following set of functions are intended to handle the different
+   -- addressing modes used by 6502 instructions. They pull one or more
+   -- additional bytes from the instruction stream and use them to address
+   -- memory. The *_Address versions are used for jumps and stores that need the
+   -- address, other instructions just need the corresponding value in memory.
+
+   function Immediate return U8 is
+   begin
+      return Memory (Program_Counter + 1);
+   end Immediate;
+
+   function Zero_Page_Address return U16 is
+   begin
+      return U16 (Memory (Program_Counter + 1));
+   end Zero_Page_Address;
+
+   function Zero_Page return U8 is
+   begin
+      return Memory (Zero_Page_Address);
+   end Zero_Page;
+
+   function Zero_Page_X_Address return U16 is
+   begin
+      return U16 (Memory (Program_Counter + 1) + Index_Register_X);
+   end Zero_Page_X_Address;
+
+   function Zero_Page_X return U8 is
+   begin
+      return Memory (Zero_Page_X_Address);
+   end Zero_Page_X;
+
+   function Zero_Page_Y_Address return U16 is
+   begin
+      return U16 (Memory (Program_Counter + 1) + Index_Register_Y);
+   end Zero_Page_Y_Address;
+
+   function Zero_Page_Y return U8 is
+   begin
+      return Memory (Zero_Page_Y_Address);
+   end Zero_Page_Y;
+
+   function Absolute_Address return U16 is
+   begin
+      return Merge (Low  => Memory (Program_Counter + 1),
+                    High => Memory (Program_Counter + 2));
+   end Absolute_Address;
+
+   function Absolute return U8 is
+   begin
+      return Memory (Absolute_Address);
+   end Absolute;
+
+   function Absolute_X_Address return U16 is
+   begin
+      return Merge (Low  => Memory (Program_Counter + 1),
+                    High => Memory (Program_Counter + 2)) + U16 (Index_Register_X);
+   end Absolute_X_Address;
+
+   function Absolute_X return U8 is
+   begin
+      return Memory (Absolute_X_Address);
+   end Absolute_X;
+
+   function Absolute_Y_Address return U16 is
+      Data1, Data2 : U8;
+   begin
+      return Merge (Low  => Memory (Program_Counter + 1),
+                    High => Memory (Program_Counter + 2)) + U16 (Index_Register_Y);
+   end Absolute_Y_Address;
+
+   function Absolute_Y return U8 is
+   begin
+      return Memory (Absolute_Y_Address);
+   end Absolute_Y;
+
+   function Indirect_Address return U16 is
+      Base : U16;
+   begin
+      Base := Merge (Low  => Memory (Program_Counter + 1),
+                     High => Memory (Program_Counter + 2));
+
+      return Merge (Low  => Memory (Base + 0),
+                    High => Memory (Base + 1));
+   end Indirect_Address;
+
+   function Indirect return U8 is
+   begin
+      return Memory (Indirect_Address);
+   end Indirect;
+
+   function Indirect_X_Address return U16 is
+      Base : U16;
+   begin
+      Base := U16 (Memory (Program_Counter + 1)) + U16 (Index_Register_X);
+      return Merge (Low  => Memory (Base + 0), High => Memory (Base + 1));
+   end Indirect_X_Address;
+
+   function Indirect_X return U8 is
+   begin
+      return Memory (Indirect_X_Address);
+   end Indirect_X;
+
+   function Indirect_Y_Address return U16 is
+      Base : U8;
+   begin
+      Base := Memory (Program_Counter + 1);
+      return Merge (Low => Base + 0, High => Base + 1) + U16 (Index_Register_Y);
+   end Indirect_Y_Address;
+
+   function Indirect_Y return U8 is
+   begin
+      return Memory (Indirect_Y_Address);
+   end Indirect_Y;
+
+   -- NOTE: Stack helper functions.
+
    procedure Push8 (Value : U8) is
    begin
       Stack_Pointer := Stack_Pointer - 1;
@@ -87,8 +218,8 @@ package body CPU is
 
       Instruction, Family, Mode, Modifier : U8;
 
-      Cycle_Count        : Integer := 0;
-      Instruction_Length : Integer := 1;
+      Cycles : Integer := 0;
+      Bytes  : Integer := 1;
 
       Data1, Data2 : U8 := 0;
 
@@ -201,6 +332,38 @@ package body CPU is
       end TYA;
 
       -------------------------------------------------------------------
+
+      procedure CMP (Value : U8) is
+         Result : U8;
+      begin
+         Result := Value - Accumulator;
+
+         Carry_Flag    := (Accumulator >= Value);
+         Zero_Flag     := (Result = 0);
+         Negative_Flag := (Shift_Right (Result, 7) and 1) = 1;
+      end CMP;
+
+      procedure CPX (Value : U8) is
+         Result : U8;
+      begin
+         Result := Value - Index_Register_X;
+
+         Carry_Flag    := (Accumulator >= Value);
+         Zero_Flag     := (Result = 0);
+         Negative_Flag := (Shift_Right (Result, 7) and 1) = 1;
+      end CPX;
+
+      procedure CPY (Value : U8) is
+         Result : U8;
+      begin
+         Result := Value - Index_Register_Y;
+
+         Carry_Flag    := (Accumulator >= Value);
+         Zero_Flag     := (Result = 0);
+         Negative_Flag := (Shift_Right (Result, 7) and 1) = 1;
+      end CPY;
+
+      ----------------------------------------------------------------
 
       procedure JMP (Address : U16) is
       begin
@@ -317,13 +480,13 @@ package body CPU is
          U8_IO.Put (Modifier, Base => 2);
          New_Line;
 
-         if Instruction_Length > 1 then
+         if Bytes > 1 then
             Put ("   Data Byte 1     : ");
             U8_IO.Put (Data1, Base => 16);
             New_Line;
          end if;
 
-         if Instruction_Length > 2 then
+         if Bytes > 2 then
             Put ("   Data Byte 2     : ");
             U8_IO.Put (Data2, Base => 16);
             New_Line;
@@ -343,355 +506,332 @@ package body CPU is
 
       case Instruction is
          when 16#EA# => -- NOP
-            Cycle_Count := 2;
+            Cycles := 2;
             NOP;
 
             --------------------------------------------------------------------
 
          when 16#A9# => -- LDA #Immediate
-            Instruction_Length := 2;
-            Cycle_Count        := 2;
-
-            Data1 := Memory (Program_Counter + 1);
-            LDA (Data1);
+            Bytes  := 2;
+            Cycles := 2;
+            LDA (Immediate);
 
          when 16#A5# => -- LDA Zero Page
-            Instruction_Length := 2;
-            Cycle_Count        := 3;
-
-            Data1 := Memory (Program_Counter + 1);
-            LDA (Memory (U16 (Data1)));
+            Bytes  := 2;
+            Cycles := 3;
+            LDA (Zero_Page);
 
          when 16#B5# => -- LDA Zero Page,X
-            Instruction_Length := 2;
-            Cycle_Count        := 4;
-
-            Data1 := Memory (Program_Counter + 1);
-            LDA (Memory (U16 (Data1 + Index_Register_X)));
+            Bytes  := 2;
+            Cycles := 4;
+            LDA (Zero_Page_X);
 
          when 16#AD# => -- LDA Absolute
-            Instruction_Length := 3;
-            Cycle_Count        := 4;
-
-            Data1 := Memory (Program_Counter + 1);
-            Data2 := Memory (Program_Counter + 2);
-            LDA (Memory (Merge (Low => Data1, High => Data2)));
+            Bytes  := 3;
+            Cycles := 4;
+            LDA (Absolute);
 
          when 16#BD# => -- LDA Absolute,X
-            Instruction_Length := 3;
-            Cycle_Count        := 4; -- TODO: 5 if page is crossed.
-
-            Data1 := Memory (Program_Counter + 1);
-            Data2 := Memory (Program_Counter + 2);
-            LDA (Memory (Merge (Low => Data1, High => Data2) + U16 (Index_Register_X)));
+            Bytes  := 3;
+            Cycles := 4; -- TODO: 5 if page is crossed.
+            LDA (Absolute_X);
 
          when 16#B9# => -- LDA Absolute,Y
-            Instruction_Length := 3;
-            Cycle_Count        := 4; -- TODO: 5 if page is crossed.
-
-            Data1 := Memory (Program_Counter + 1);
-            Data2 := Memory (Program_Counter + 2);
-            LDA (Memory (Merge (Low => Data1, High => Data2) + U16 (Index_Register_Y)));
+            Bytes  := 3;
+            Cycles := 4; -- TODO: 5 if page is crossed.
+            LDA (Absolute_Y);
 
          when 16#A1# => -- LDA (Indirect,X)
-            Instruction_Length := 2;
-            Cycle_Count        := 6;
-
-            Data1 := Memory (Program_Counter + 1);
-            declare
-               Base : U16 := U16 (Data1) + U16 (Index_Register_X);
-            begin
-               LDA (Memory (Merge (Low => Memory (Base + 0), High => Memory (Base + 1))));
-            end;
+            Bytes  := 2;
+            Cycles := 6;
+            LDA (Indirect_X);
 
          when 16#B1# => -- LDA (Indirect),Y
-            Instruction_Length := 2;
-            Cycle_Count        := 5; -- TODO: 6 if page is crossed.
-
-            Data1 := Memory (Program_Counter + 1);
-            LDA (Memory (U16 (Memory (U16 (Data1))) + U16 (Index_Register_Y)));
+            Bytes  := 2;
+            Cycles := 5; -- TODO: 6 if page is crossed.
+            LDA (Indirect_Y);
 
             --------------------------------------------------------------------
 
          when 16#A2# => -- LDX #Immediate
-            Instruction_Length := 2;
-            Cycle_Count        := 2;
-
-            Data1 := Memory (Program_Counter + 1);
-            LDX (Data1);
+            Bytes  := 2;
+            Cycles := 2;
+            LDX (Immediate);
 
          when 16#A6# => -- LDX Zero Page
-            Instruction_Length := 2;
-            Cycle_Count        := 3;
-
-            Data1 := Memory (Program_Counter + 1);
-            LDX (Memory (U16 (Data1)));
+            Bytes  := 2;
+            Cycles := 3;
+            LDX (Zero_Page);
 
          when 16#B6# => -- LDX Zero Page,X
-            Instruction_Length := 2;
-            Cycle_Count        := 4;
-
-            Data1 := Memory (Program_Counter + 1);
-            LDX (Memory (U16 (Data1 + Index_Register_X)));
+            Bytes  := 2;
+            Cycles := 4;
+            LDX (Zero_Page_X);
 
          when 16#AE# => -- LDX Absolute
-            Instruction_Length := 3;
-            Cycle_Count        := 4;
-
-            Data1 := Memory (Program_Counter + 1);
-            Data2 := Memory (Program_Counter + 2);
-            LDX (Memory (Merge (Low => Data1, High => Data2)));
+            Bytes  := 3;
+            Cycles := 4;
+            LDX (Absolute);
 
          when 16#BE# => -- LDX Absolute,X
-            Instruction_Length := 3;
-            Cycle_Count        := 4; -- TODO: 5 if page is crossed.
-
-            Data1 := Memory (Program_Counter + 1);
-            Data2 := Memory (Program_Counter + 2);
-            LDX (Memory (Merge (Low => Data1, High => Data2) + U16 (Index_Register_X)));
+            Bytes  := 3;
+            Cycles := 4; -- TODO: 5 if page is crossed.
+            LDX (Absolute_X);
 
             --------------------------------------------------------------------
 
          when 16#A0# => -- LDY #Immediate
-            Instruction_Length := 2;
-            Cycle_Count        := 2;
-
-            Data1 := Memory (Program_Counter + 1);
-            LDY (Data1);
+            Bytes  := 2;
+            Cycles := 2;
+            LDY (Immediate);
 
          when 16#A4# => -- LDY Zero Page
-            Instruction_Length := 2;
-            Cycle_Count        := 3;
-
-            Data1 := Memory (Program_Counter + 1);
-            LDY (Memory (U16 (Data1)));
+            Bytes  := 2;
+            Cycles := 3;
+            LDY (Zero_Page);
 
          when 16#B4# => -- LDY Zero Page,X
-            Instruction_Length := 2;
-            Cycle_Count        := 4;
-
-            Data1 := Memory (Program_Counter + 1);
-            LDY (Memory (U16 (Data1 + Index_Register_X)));
+            Bytes  := 2;
+            Cycles := 4;
+            LDY (Zero_Page_X);
 
          when 16#AC# => -- LDY Absolute
-            Instruction_Length := 3;
-            Cycle_Count        := 4;
-
-            Data1 := Memory (Program_Counter + 1);
-            Data2 := Memory (Program_Counter + 2);
-            LDY (Memory (Merge (Low => Data1, High => Data2)));
+            Bytes  := 3;
+            Cycles := 4;
+            LDY (Absolute);
 
          when 16#BC# => -- LDY Absolute,X
-            Instruction_Length := 3;
-            Cycle_Count        := 4; -- TODO: 5 if page is crossed.
-
-            Data1 := Memory (Program_Counter + 1);
-            Data2 := Memory (Program_Counter + 2);
-            LDY (Memory (Merge (Low => Data1, High => Data2) + U16 (Index_Register_X)));
+            Bytes  := 3;
+            Cycles := 4; -- TODO: 5 if page is crossed.
+            LDY (Absolute_X);
 
             --------------------------------------------------------------------
 
          when 16#85# => -- STA Zero Page
-            Instruction_Length := 2;
-            Cycle_Count        := 3;
-
-            Data1 := Memory (Program_Counter + 1);
-            STA (U16 (Data1));
+            Bytes  := 2;
+            Cycles := 3;
+            STA (Zero_Page_Address);
 
          when 16#95# => -- STA Zero Page,X
-            Instruction_Length := 2;
-            Cycle_Count        := 4;
-
-            Data1 := Memory (Program_Counter + 1);
-            STA (U16 (Data1 + Index_Register_X));
+            Bytes  := 2;
+            Cycles := 4;
+            STA (Zero_Page_X_Address);
 
          when 16#8D# => -- STA Absolute
-            Instruction_Length := 3;
-            Cycle_Count        := 4;
-
-            Data1 := Memory (Program_Counter + 1);
-            Data2 := Memory (Program_Counter + 2);
-            STA (Merge (Low => Data1, High => Data2));
+            Bytes  := 3;
+            Cycles := 4;
+            STA (Absolute_Address);
 
          when 16#9D# => -- STA Absolute,X
-            Instruction_Length := 3;
-            Cycle_Count        := 5;
-
-            Data1 := Memory (Program_Counter + 1);
-            Data2 := Memory (Program_Counter + 2);
-            STA (Merge (Low => Data1, High => Data2) + U16 (Index_Register_X));
+            Bytes  := 3;
+            Cycles := 5;
+            STA (Absolute_X_Address);
 
          when 16#99# => -- STA Absolute,Y
-            Instruction_Length := 3;
-            Cycle_Count        := 5;
-
-            Data1 := Memory (Program_Counter + 1);
-            Data2 := Memory (Program_Counter + 2);
-            STA (Merge (Low => Data1, High => Data2) + U16 (Index_Register_Y));
+            Bytes  := 3;
+            Cycles := 5;
+            STA (Absolute_Y_Address);
 
          when 16#81# => -- STA (Indirect,X)
-            Instruction_Length := 2;
-            Cycle_Count        := 6;
-
-            Data1 := Memory (Program_Counter + 1);
-            declare
-               Base : U16 := U16 (Data1) + U16 (Index_Register_X);
-            begin
-               STA (Merge (Low => Memory (Base + 0), High => Memory (Base + 1)));
-            end;
+            Bytes  := 2;
+            Cycles := 6;
+            STA (Indirect_X_Address);
 
          when 16#91# => -- STA (Indirect),Y
-            Instruction_Length := 2;
-            Cycle_Count        := 6;
-
-            Data1 := Memory (Program_Counter + 1);
-            STA (U16 (Memory (U16 (Data1))) + U16 (Index_Register_Y));
+            Bytes  := 2;
+            Cycles := 6;
+            STA (Indirect_Y_Address);
 
             --------------------------------------------------------------------
 
          when 16#86# => -- STX Zero Page
-            Instruction_Length := 2;
-            Cycle_Count        := 3;
-
-            Data1 := Memory (Program_Counter + 1);
-            STX (U16 (Data1));
+            Bytes  := 2;
+            Cycles := 3;
+            STX (Zero_Page_Address);
 
          when 16#96# => -- STX Zero Page,Y
-            Instruction_Length := 2;
-            Cycle_Count        := 4;
-
-            Data1 := Memory (Program_Counter + 1);
-            STX (U16 (Data1 + Index_Register_Y));
+            Bytes  := 2;
+            Cycles := 4;
+            STX (Zero_Page_Y_Address);
 
          when 16#8E# => -- STX Absolute
-            Instruction_Length := 3;
-            Cycle_Count        := 4;
-
-            Data1 := Memory (Program_Counter + 1);
-            Data2 := Memory (Program_Counter + 2);
-            STX (Merge (Low => Data1, High => Data2));
+            Bytes  := 3;
+            Cycles := 4;
+            STX (Absolute_Address);
 
             --------------------------------------------------------------------
 
          when 16#84# => -- STY Zero Page
-            Instruction_Length := 2;
-            Cycle_Count        := 3;
-
-            Data1 := Memory (Program_Counter + 1);
-            STY (U16 (Data1));
+            Bytes  := 2;
+            Cycles := 3;
+            STY (Zero_Page_Address);
 
          when 16#94# => -- STY Zero Page,X
-            Instruction_Length := 2;
-            Cycle_Count        := 4;
-
-            Data1 := Memory (Program_Counter + 1);
-            STY (U16 (Data1 + Index_Register_X));
+            Bytes  := 2;
+            Cycles := 4;
+            STY (Zero_Page_X_Address);
 
          when 16#8C# => -- STY Absolute
-            Instruction_Length := 3;
-            Cycle_Count        := 4;
-
-            Data1 := Memory (Program_Counter + 1);
-            Data2 := Memory (Program_Counter + 2);
-            STY (Merge (Low => Data1, High => Data2));
+            Bytes  := 3;
+            Cycles := 4;
+            STY (Absolute_Address);
 
             --------------------------------------------------------------------
 
          when 16#AA# => -- TAX
-            Instruction_Length := 1;
-            Cycle_Count        := 2;
+            Bytes  := 1;
+            Cycles := 2;
             TAX;
 
          when 16#A8# => -- TAY
-            Instruction_Length := 1;
-            Cycle_Count        := 2;
+            Bytes  := 1;
+            Cycles := 2;
             TAY;
 
          when 16#BA# => -- TSX
-            Instruction_Length := 1;
-            Cycle_Count        := 2;
+            Bytes  := 1;
+            Cycles := 2;
             TSX;
 
          when 16#8A# => -- TXA
-            Instruction_Length := 1;
-            Cycle_Count        := 2;
+            Bytes  := 1;
+            Cycles := 2;
             TXA;
 
          when 16#9A# => -- TXS
-            Instruction_Length := 1;
-            Cycle_Count        := 2;
+            Bytes  := 1;
+            Cycles := 2;
             TXS;
 
          when 16#98# => -- TYA
-            Instruction_Length := 1;
-            Cycle_Count        := 2;
+            Bytes  := 1;
+            Cycles := 2;
             TYA;
 
             --------------------------------------------------------------------
 
-         when 16#4C# => -- JMP Absolute
-            Instruction_Length := 3;
-            Cycle_Count        := 3;
+         when 16#C9# => -- CMP #Immediate
+            Bytes  := 2;
+            Cycles := 2;
+            CMP (Immediate);
 
-            Data1 := Memory (Program_Counter + 1);
-            Data2 := Memory (Program_Counter + 2);
-            JMP (Merge (Low => Data1, High => Data2));
+         when 16#C5# => -- CMP Zero Page
+            Bytes  := 2;
+            Cycles := 3;
+            CMP (Zero_Page);
+
+         when 16#D5# => -- CMP Zero Page,X
+            Bytes  := 2;
+            Cycles := 4;
+            CMP (Zero_Page_X);
+
+         when 16#CD# => -- CMP Absolute
+            Bytes  := 3;
+            Cycles := 4;
+            CMP (Absolute);
+
+         when 16#DD# => -- CMP Absolute,X
+            Bytes  := 3;
+            Cycles := 4; -- TODO: 5 if page crossed.
+            CMP (Absolute_X);
+
+         when 16#D9# => -- CMP Absolute,Y
+            Bytes  := 3;
+            Cycles := 4; -- TODO: 5 if page crossed.
+            CMP (Absolute_Y);
+
+         when 16#C1# => -- CMP (Indirect,X)
+            Bytes  := 2;
+            Cycles := 6;
+            CMP (Indirect_X);
+
+         when 16#D1# => -- CMP (Indirect),Y
+            Bytes  := 2;
+            Cycles := 5; -- TODO: 6 if page crossed.
+            CMP (Indirect_Y);
+
+         when 16#E0# => -- CPX #Immediate
+            Bytes  := 2;
+            Cycles := 2;
+            CPX (Immediate);
+
+         when 16#E4# => -- CPX Zero Page
+            Bytes  := 2;
+            Cycles := 3;
+            CPX (Zero_Page);
+
+         when 16#EC# => -- CPX Absolute
+            Bytes  := 3;
+            Cycles := 4;
+            CPX (Absolute);
+
+         when 16#C0# => -- CPY #Immediate
+            Bytes  := 2;
+            Cycles := 2;
+            CPY (Absolute);
+
+         when 16#C4# => -- CPY Zero Page
+            Bytes  := 2;
+            Cycles := 3;
+            CPY (Zero_Page);
+
+         when 16#CC# => -- CPY Absolute
+            Bytes  := 3;
+            Cycles := 4;
+            CPY (Absolute);
+
+            --------------------------------------------------------------------
+
+         when 16#4C# => -- JMP Absolute
+            Bytes  := 3;
+            Cycles := 3;
+            JMP (Absolute_Address);
 
          when 16#6C# => -- JMP (Indirect)
-            Instruction_Length := 3;
-            Cycle_Count        := 5;
-
-            Data1 := Memory (Program_Counter + 1);
-            Data2 := Memory (Program_Counter + 2);
-            declare
-               Base : U16 := Merge (Low => Data1, High => Data2);
-            begin
-               JMP (Merge (Low => Memory (Base + 0), High => Memory (Base + 1)));
-            end;
+            Bytes  := 3;
+            Cycles := 5;
+            JMP (Indirect_Address);
 
          when 16#20# => -- JSR
-            Instruction_Length := 3;
-            Cycle_Count        := 6;
-
-            Data1 := Memory (Program_Counter + 1);
-            Data2 := Memory (Program_Counter + 2);
-            JSR (Merge (Low => Data1, High => Data2));
+            Bytes  := 3;
+            Cycles := 6;
+            JSR (Absolute_Address);
 
          when 16#60# => -- RTS
-            Instruction_Length := 1;
-            Cycle_Count        := 6;
+            Bytes  := 1;
+            Cycles := 6;
             RTS;
 
          when 16#00# => -- BRK
-            Instruction_Length := 2; -- NOTE: BRK skips the following byte on return.
-            Cycle_Count        := 7;
+            Bytes  := 2; -- NOTE: BRK skips the following byte on return.
+            Cycles := 7;
             BRK;
 
          when 16#40# => -- RTI
-            Instruction_Length := 1;
-            Cycle_Count        := 6;
+            Bytes  := 1;
+            Cycles := 6;
             RTI;
 
             --------------------------------------------------------------------
 
          when 16#48# => -- PHA
-            Instruction_Length := 1;
-            Cycle_Count        := 3;
+            Bytes  := 1;
+            Cycles := 3;
             PHA;
 
          when 16#08# => -- PHP
-            Instruction_Length := 1;
-            Cycle_Count        := 3;
+            Bytes  := 1;
+            Cycles := 3;
             PHP;
 
          when 16#68# => -- PLA
-            Instruction_Length := 1;
-            Cycle_Count        := 4;
+            Bytes  := 1;
+            Cycles := 4;
             PLA;
 
          when 16#28# => -- PLP
-            Instruction_Length := 1;
-            Cycle_Count        := 4;
+            Bytes  := 1;
+            Cycles := 4;
             PLP;
 
             --------------------------------------------------------------------
@@ -704,9 +844,9 @@ package body CPU is
       end case;
 
       Print_Instruction;
-      Program_Counter := Program_Counter + U16 (Instruction_Length);
+      Program_Counter := Program_Counter + U16 (Bytes);
 
-      return Cycle_Count;
+      return Cycles;
    end Decode_And_Execute;
 
    -----------------------------------------------------------------------------
