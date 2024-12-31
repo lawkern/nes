@@ -50,15 +50,15 @@ package body CPU is
    begin
       Stack_Pointer := Stack_Pointer - 1;
 
-      Memory (Stack_Base - U16 (Stack_Pointer)) := Value;
+      Memory (Stack_Top + U16 (Stack_Pointer)) := Value;
    end Push8;
 
    procedure Push16 (Value : U16) is
    begin
       Stack_Pointer := Stack_Pointer - 2;
 
-      Memory (Stack_Base - U16 (Stack_Pointer) + 0) := U8 (Shift_Right (Value, 8) and 16#00FF#);
-      Memory (Stack_Base - U16 (Stack_Pointer) + 1) := U8 (Shift_Right (Value, 0) and 16#00FF#);
+      Memory (Stack_Top + U16 (Stack_Pointer) + 0) := U8 (Shift_Right (Value, 8) and 16#00FF#);
+      Memory (Stack_Top + U16 (Stack_Pointer) + 1) := U8 (Shift_Right (Value, 0) and 16#00FF#);
    end Push16;
 
    function Pop8 return U8 is
@@ -236,18 +236,68 @@ package body CPU is
          begin
             Flags := Pop8;
 
-            Carry_Flag        := (Flags and 2#0000_0001#) /= 0;
-            Zero_Flag         := (Flags and 2#0000_0010#) /= 0;
-            Interrupt_Disable := (Flags and 2#0000_0100#) /= 0;
-            Decimal_Mode      := (Flags and 2#0000_1000#) /= 0;
-            Overflow_Flag     := (Flags and 2#0100_0000#) /= 0;
-            Negative_Flag     := (Flags and 2#1000_0000#) /= 0;
+            Carry_Flag        := (Flags and Carry_Flag_Bit) /= 0;
+            Zero_Flag         := (Flags and Zero_Flag_Bit) /= 0;
+            Interrupt_Disable := (Flags and Interrupt_Disable_Bit) /= 0;
+            Decimal_Mode      := (Flags and Decimal_Mode_Bit) /= 0;
+            Overflow_Flag     := (Flags and Overflow_Flag_Bit) /= 0;
+            Negative_Flag     := (Flags and Negative_Flag_Bit) /= 0;
 
             Program_Counter := Pop16;
          end;
       end RTI;
 
       -----------------------------------------------------------------
+
+      procedure PHA is
+      begin
+         Put_Line ("PHA");
+         Push8 (Accumulator);
+      end PHA;
+
+      procedure PHP is
+         function Pack_Flags return U8 is
+            Result : U8 := 2#0011_0000#;
+         begin
+            -- TODO: Pack the flag bits more intelligently.
+            Result := (if Carry_Flag then (Result or Carry_Flag_Bit) else Result);
+            Result := (if Zero_Flag then (Result or Zero_Flag_Bit) else Result);
+            Result := (if Interrupt_Disable then (Result or Interrupt_Disable_Bit) else Result);
+            Result := (if Decimal_Mode then (Result or Decimal_Mode_Bit) else Result);
+            Result := (if Overflow_Flag then (Result or Overflow_Flag_Bit) else Result);
+            Result := (if Negative_Flag then (Result or Negative_Flag_Bit) else Result);
+
+            return Result;
+         end Pack_Flags;
+      begin
+         Put_Line ("PHP");
+         Push8 (Pack_Flags);
+      end PHP;
+
+      procedure PLA is
+      begin
+         Put_Line ("PLA");
+         Accumulator := Pop8;
+
+         Zero_Flag     := (Accumulator = 0);
+         Negative_Flag := (Shift_Right (Accumulator, 7) and 1) = 1;
+      end PLA;
+
+      procedure PLP is
+         Flags : U8;
+      begin
+         Put_Line ("PLP");
+         Flags := Pop8;
+
+         Carry_Flag        := (Flags and Carry_Flag_Bit) /= 0;
+         Zero_Flag         := (Flags and Zero_Flag_Bit) /= 0;
+         Interrupt_Disable := (Flags and Interrupt_Disable_Bit) /= 0; -- TODO: Delay effect by one instruction.
+         Decimal_Mode      := (Flags and Decimal_Mode_Bit) /= 0;
+         Overflow_Flag     := (Flags and Overflow_Flag_Bit) /= 0;
+         Negative_Flag     := (Flags and Negative_Flag_Bit) /= 0;
+      end PLP;
+
+      ---------------------------------------------------------------
 
       procedure Print_Instruction is
       begin
@@ -623,6 +673,29 @@ package body CPU is
             RTI;
 
             --------------------------------------------------------------------
+
+         when 16#48# => -- PHA
+            Instruction_Length := 1;
+            Cycle_Count        := 3;
+            PHA;
+
+         when 16#08# => -- PHP
+            Instruction_Length := 1;
+            Cycle_Count        := 3;
+            PHP;
+
+         when 16#68# => -- PLA
+            Instruction_Length := 1;
+            Cycle_Count        := 4;
+            PLA;
+
+         when 16#28# => -- PLP
+            Instruction_Length := 1;
+            Cycle_Count        := 4;
+            PLP;
+
+            --------------------------------------------------------------------
+
          when others =>
             Put_Line ("*Unhandled Instruction*");
             Print_Instruction;

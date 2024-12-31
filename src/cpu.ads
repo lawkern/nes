@@ -30,6 +30,22 @@ package CPU is
    Overflow_Flag     : Boolean;
    Negative_Flag     : Boolean;
 
+   Carry_Flag_Bit        : constant U8 := 2#0000_0001#;
+   Zero_Flag_Bit         : constant U8 := 2#0000_0010#;
+   Interrupt_Disable_Bit : constant U8 := 2#0000_0100#;
+   Decimal_Mode_Bit      : constant U8 := 2#0000_1000#;
+   Break_Command_Bit     : constant U8 := 2#0001_0000#;
+   Overflow_Flag_Bit     : constant U8 := 2#0100_0000#;
+   Negative_Flag_Bit     : constant U8 := 2#1000_0000#;
+
+   Carry_Flag_Mask        : constant U8 := not Carry_Flag_Bit;
+   Zero_Flag_Mask         : constant U8 := not Zero_Flag_Bit;
+   Interrupt_Disable_Mask : constant U8 := not Interrupt_Disable_Bit;
+   Decimal_Mode_Mask      : constant U8 := not Decimal_Mode_Bit;
+   Break_Command_Mask     : constant U8 := not Break_Command_Bit;
+   Overflow_Flag_Mask     : constant U8 := not Overflow_Flag_Bit;
+   Negative_Flag_Mask     : constant U8 := not Negative_Flag_Bit;
+
    type Memory_Map is array (U16) of U8;
    Memory : Memory_Map;
 
