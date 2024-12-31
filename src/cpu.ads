@@ -67,7 +67,7 @@ package CPU is
    -- DONE: Transfer   TAX   TXA   TAY   TYA
    -- DONE: Arithmetic ADC   SBC   INC   DEC   INX   DEX   INY   DEY
    -- DONE: Shift      ASL   LSR   ROL   ROR
-   -- TODO: Bitwise    AND   ORA   EOR   BIT
+   -- DONE: Bitwise    AND   ORA   EOR   BIT
    -- DONE: Compare    CMP   CPX   CPY
    -- TODO: Branch     BCC   BCS   BEQ   BNE   BPL   BMI   BVC   BVS
    -- DONE: Jump       JMP   JSR   RTS   BRK   RTI
@@ -79,6 +79,7 @@ package CPU is
    Instructions : constant Instruction_Table :=
      (16#EA# => ("NOP", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
 
+      -- NOTE: Access instructions.
       16#A9# => ("LDA", Bytes => 2, Cycles => 2, Page_Cross_Penalty => 0),
       16#A5# => ("LDA", Bytes => 2, Cycles => 3, Page_Cross_Penalty => 0),
       16#B5# => ("LDA", Bytes => 2, Cycles => 4, Page_Cross_Penalty => 0),
@@ -116,11 +117,13 @@ package CPU is
       16#94# => ("STY", Bytes => 2, Cycles => 4, Page_Cross_Penalty => 0),
       16#8C# => ("STY", Bytes => 3, Cycles => 4, Page_Cross_Penalty => 0),
 
+      -- NOTE: Transfer instructions.
       16#AA# => ("TAX", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
       16#8A# => ("TXA", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
       16#A8# => ("TAY", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
       16#98# => ("TYA", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
 
+      -- NOTE: Arithmetic instructions.
       16#69# => ("ADC", Bytes => 2, Cycles => 2, Page_Cross_Penalty => 0),
       16#65# => ("ADC", Bytes => 2, Cycles => 3, Page_Cross_Penalty => 0),
       16#75# => ("ADC", Bytes => 2, Cycles => 4, Page_Cross_Penalty => 0),
@@ -154,6 +157,7 @@ package CPU is
       16#C8# => ("INY", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
       16#88# => ("DEY", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
 
+      -- NOTE: Shift instructions.
       16#0A# => ("ASL", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
       16#06# => ("ASL", Bytes => 2, Cycles => 5, Page_Cross_Penalty => 0),
       16#16# => ("ASL", Bytes => 2, Cycles => 6, Page_Cross_Penalty => 0),
@@ -178,6 +182,39 @@ package CPU is
       16#6E# => ("ROR", Bytes => 3, Cycles => 6, Page_Cross_Penalty => 0),
       16#7E# => ("ROR", Bytes => 3, Cycles => 7, Page_Cross_Penalty => 0),
 
+      16#29# => ("AND", Bytes => 2, Cycles => 2, Page_Cross_Penalty => 0),
+      16#25# => ("AND", Bytes => 2, Cycles => 3, Page_Cross_Penalty => 0),
+      16#35# => ("AND", Bytes => 2, Cycles => 4, Page_Cross_Penalty => 0),
+      16#2D# => ("AND", Bytes => 3, Cycles => 4, Page_Cross_Penalty => 0),
+      16#3D# => ("AND", Bytes => 3, Cycles => 4, Page_Cross_Penalty => 1),
+      16#39# => ("AND", Bytes => 3, Cycles => 4, Page_Cross_Penalty => 1),
+      16#21# => ("AND", Bytes => 2, Cycles => 6, Page_Cross_Penalty => 0),
+      16#31# => ("AND", Bytes => 2, Cycles => 5, Page_Cross_Penalty => 1),
+
+      16#09# => ("ORA", Bytes => 2, Cycles => 2, Page_Cross_Penalty => 0),
+      16#05# => ("ORA", Bytes => 2, Cycles => 3, Page_Cross_Penalty => 0),
+      16#15# => ("ORA", Bytes => 2, Cycles => 4, Page_Cross_Penalty => 0),
+      16#0D# => ("ORA", Bytes => 3, Cycles => 4, Page_Cross_Penalty => 0),
+      16#1D# => ("ORA", Bytes => 3, Cycles => 4, Page_Cross_Penalty => 1),
+      16#19# => ("ORA", Bytes => 3, Cycles => 4, Page_Cross_Penalty => 1),
+      16#01# => ("ORA", Bytes => 2, Cycles => 6, Page_Cross_Penalty => 0),
+      16#11# => ("ORA", Bytes => 2, Cycles => 5, Page_Cross_Penalty => 1),
+
+      16#49# => ("EOR", Bytes => 2, Cycles => 2, Page_Cross_Penalty => 0),
+      16#45# => ("EOR", Bytes => 2, Cycles => 3, Page_Cross_Penalty => 0),
+      16#55# => ("EOR", Bytes => 2, Cycles => 4, Page_Cross_Penalty => 0),
+      16#4D# => ("EOR", Bytes => 3, Cycles => 4, Page_Cross_Penalty => 0),
+      16#5D# => ("EOR", Bytes => 3, Cycles => 4, Page_Cross_Penalty => 1),
+      16#59# => ("EOR", Bytes => 3, Cycles => 4, Page_Cross_Penalty => 1),
+      16#41# => ("EOR", Bytes => 2, Cycles => 6, Page_Cross_Penalty => 0),
+      16#51# => ("EOR", Bytes => 2, Cycles => 5, Page_Cross_Penalty => 1),
+
+      16#24# => ("BIT", Bytes => 2, Cycles => 3, Page_Cross_Penalty => 0),
+      16#2C# => ("BIT", Bytes => 3, Cycles => 4, Page_Cross_Penalty => 0),
+
+      -- NOTE: Bitwise instructions.
+
+      -- NOTE: Compare instructions.
       16#C9# => ("CMP", Bytes => 2, Cycles => 2, Page_Cross_Penalty => 0),
       16#C5# => ("CMP", Bytes => 2, Cycles => 3, Page_Cross_Penalty => 0),
       16#D5# => ("CMP", Bytes => 2, Cycles => 4, Page_Cross_Penalty => 0),
@@ -195,6 +232,10 @@ package CPU is
       16#C4# => ("CPY", Bytes => 2, Cycles => 3, Page_Cross_Penalty => 0),
       16#CC# => ("CPY", Bytes => 3, Cycles => 4, Page_Cross_Penalty => 0),
 
+      -- NOTE: Stack instructions.
+
+
+      -- NOTE: Jump instructions.
       16#4C# => ("JMP", Bytes => 3, Cycles => 3, Page_Cross_Penalty => 0),
       16#6C# => ("JMP", Bytes => 3, Cycles => 5, Page_Cross_Penalty => 0),
       16#20# => ("JSR", Bytes => 3, Cycles => 6, Page_Cross_Penalty => 0),
@@ -202,12 +243,18 @@ package CPU is
       16#00# => ("BRK", Bytes => 2, Cycles => 7, Page_Cross_Penalty => 0),
       16#40# => ("RTI", Bytes => 1, Cycles => 6, Page_Cross_Penalty => 0),
 
+      -- NOTE: Stack instructions.
       16#48# => ("PHA", Bytes => 1, Cycles => 3, Page_Cross_Penalty => 0),
       16#08# => ("PHP", Bytes => 1, Cycles => 3, Page_Cross_Penalty => 0),
       16#68# => ("PLA", Bytes => 1, Cycles => 4, Page_Cross_Penalty => 0),
       16#28# => ("PLP", Bytes => 1, Cycles => 4, Page_Cross_Penalty => 0),
       16#BA# => ("TSX", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
       16#9A# => ("TXS", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
+
+      -- NOTE: Flags instructions.
+
+
+
 
 
       others => ("???", 0, 0, 0));

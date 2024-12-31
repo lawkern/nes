@@ -51,6 +51,11 @@ package body CPU is
       return (Value and Negative_Flag_Bit) /= 0;
    end Negative;
 
+   function Overflow (Value : U8) return Boolean is
+   begin
+      return (Value and Overflow_Flag_Bit) /= 0;
+   end Overflow;
+
    -- NOTE: The following set of functions are intended to handle the different
    -- addressing modes used by 6502 instructions. They pull one or more
    -- additional bytes from the instruction stream and use them to address
@@ -364,6 +369,42 @@ package body CPU is
       end DEY;
 
       ---------------------------------------------------------------
+
+      procedure ANDA (Value : U8) is
+      begin
+         Accumulator := Accumulator and Value;
+
+         Zero_Flag     := (Accumulator = 0);
+         Negative_Flag := Negative (Accumulator);
+      end ANDA;
+
+      procedure ORA (Value : U8) is
+      begin
+         Accumulator := Accumulator or Value;
+
+         Zero_Flag     := (Accumulator = 0);
+         Negative_Flag := Negative (Accumulator);
+      end ORA;
+
+      procedure EOR (Value : U8) is
+      begin
+         Accumulator := Accumulator xor Value;
+
+         Zero_Flag     := (Accumulator = 0);
+         Negative_Flag := Negative (Accumulator);
+      end EOR;
+
+      procedure BIT (Value : U8) is
+         Result : U8;
+      begin
+         Result := Accumulator xor Value;
+
+         Zero_Flag     := (Result = 0);
+         Overflow_Flag := Overflow (Result);
+         Negative_Flag := Negative (Result);
+      end BIT;
+
+      --------------------------------------------------------------
 
       procedure ASL (Value : in out U8) is
          Result, Previous : U8;
@@ -683,6 +724,36 @@ package body CPU is
          when 16#C8# =>INY;
          when 16#88# =>DEY;
 
+         when 16#29# =>ANDA (Immediate);
+         when 16#25# =>ANDA (Memory (Zero_Page));
+         when 16#35# =>ANDA (Memory (Zero_Page_X));
+         when 16#2D# =>ANDA (Memory (Absolute));
+         when 16#3D# =>ANDA (Memory (Absolute_X));
+         when 16#39# =>ANDA (Memory (Absolute_Y));
+         when 16#21# =>ANDA (Memory (Indirect_X));
+         when 16#31# =>ANDA (Memory (Indirect_Y));
+
+         when 16#09# =>ORA (Immediate);
+         when 16#05# =>ORA (Memory (Zero_Page));
+         when 16#15# =>ORA (Memory (Zero_Page_X));
+         when 16#0D# =>ORA (Memory (Absolute));
+         when 16#1D# =>ORA (Memory (Absolute_X));
+         when 16#19# =>ORA (Memory (Absolute_Y));
+         when 16#01# =>ORA (Memory (Indirect_X));
+         when 16#11# =>ORA (Memory (Indirect_Y));
+
+         when 16#49# =>EOR (Immediate);
+         when 16#45# =>EOR (Memory (Zero_Page));
+         when 16#55# =>EOR (Memory (Zero_Page_X));
+         when 16#4D# =>EOR (Memory (Absolute));
+         when 16#5D# =>EOR (Memory (Absolute_X));
+         when 16#59# =>EOR (Memory (Absolute_Y));
+         when 16#41# =>EOR (Memory (Indirect_X));
+         when 16#51# =>EOR (Memory (Indirect_Y));
+
+         when 16#24# =>BIT (Memory (Zero_Page));
+         when 16#2C# =>BIT (Memory (Absolute));
+
          when 16#0A# =>ASL (Accumulator);
          when 16#06# =>ASL (Memory (Zero_Page));
          when 16#16# =>ASL (Memory (Zero_Page_X));
@@ -737,8 +808,7 @@ package body CPU is
          when 16#BA# =>TSX;
          when 16#9A# =>TXS;
 
-         when others =>
-            raise Unimplemented_Instruction;
+         when others =>raise Unimplemented_Instruction;
       end case;
 
       Program_Counter := Program_Counter + U16 (Bytes);
