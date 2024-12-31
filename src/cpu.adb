@@ -35,35 +35,30 @@ package body CPU is
       U8_IO.Default_Base  := 16;
       U16_IO.Default_Base := 16;
 
-      Put_Line ("-------------------------");
-      Put ("PC : ");
+      Put ("PC:");
       U16_IO.Put (Program_Counter);
-      New_Line;
 
-      Put ("SP : ");
+      Put (" | SP: ");
       U8_IO.Put (Stack_Pointer);
-      New_Line;
 
-      Put ("A  : ");
+      Put ("| A: ");
       U8_IO.Put (Accumulator);
-      New_Line;
 
-      Put ("X  : ");
+      Put (" | X: ");
       U8_IO.Put (Index_Register_X);
-      New_Line;
 
-      Put ("Y  : ");
+      Put (" | Y: ");
       U8_IO.Put (Index_Register_Y);
       New_Line;
-      Put_Line ("-------------------------");
-      Put_Line ("Carry_Flag        : " & Carry_Flag'Image);
-      Put_Line ("Zero_Flag         : " & Zero_Flag'Image);
-      Put_Line ("Interrupt_Disable : " & Interrupt_Disable'Image);
-      Put_Line ("Decimal_Mode      : " & Decimal_Mode'Image);
-      Put_Line ("Break_Command     : " & Break_Command'Image);
-      Put_Line ("Overflow_Flag     : " & Overflow_Flag'Image);
-      Put_Line ("Negative_Flag     : " & Negative_Flag'Image);
-      Put_Line ("-------------------------");
+
+      Put ("CF:" & Boolean'Pos (Carry_Flag)'Image);
+      Put (" | ZF:" & Boolean'Pos (Zero_Flag)'Image);
+      Put (" | ID:" & Boolean'Pos (Interrupt_Disable)'Image);
+      Put (" | DM:" & Boolean'Pos (Decimal_Mode)'Image);
+      Put (" | BC:" & Boolean'Pos (Break_Command)'Image);
+      Put (" | OF:" & Boolean'Pos (Overflow_Flag)'Image);
+      Put (" | NF:" & Boolean'Pos (Negative_Flag)'Image);
+      New_Line;
    end Print_Registers;
 
    -----------------------------------------------------------------------------
@@ -717,6 +712,9 @@ package body CPU is
          U8_IO.Put (Modifier, Base => 2);
          New_Line;
 
+         Put_Line ("   Cycles          : " & Cycles'Image);
+         Put_Line ("   Bytes           : " & Bytes'Image);
+
          if Bytes > 1 then
             Put ("   Data Byte 1     : ");
             U8_IO.Put (Data1, Base => 16);
@@ -734,8 +732,6 @@ package body CPU is
 
       --------------------------------------------------------------------------
    begin
-      Put_Line ("---------------------------------------------------");
-
       Instruction := Memory (Program_Counter);
       Family      := Shift_Right (Instruction, 5) and 2#000_0111#;
       Mode        := Shift_Right (Instruction, 2) and 2#000_0111#;
@@ -934,5 +930,4 @@ package body CPU is
       return Cycles;
    end Decode_And_Execute;
 
-   -----------------------------------------------------------------------------
 end CPU;
