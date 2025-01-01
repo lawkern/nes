@@ -2,11 +2,13 @@
 -- (c) copyright 2024 Lawrence D. Kern /////////////////////////////////////////
 --------------------------------------------------------------------------------
 
-with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Text_IO;      use Ada.Text_IO;
+with Ada.Command_Line; use Ada.Command_Line;
 
-with Shared; use Shared;
-with CPU;    use CPU;
-with Memory; use Memory;
+with Shared;    use Shared;
+with CPU;       use CPU;
+with Memory;    use Memory;
+with Cartridge; use Cartridge;
 
 procedure Main is
    type Instruction_Stream is array (Natural range <>) of U8;
@@ -29,9 +31,13 @@ begin
    CPU.Power_On;
    CPU.Print_State;
 
-   for Index in Program'Range loop
-      Memory.Write (CPU.Program_Counter + U16 (Index), Program (Index));
-   end loop;
+   if Argument_Count = 1 then
+      Cartridge.Load (Argument (1));
+   else
+      for Index in Program'Range loop
+         Memory.Write (CPU.Program_Counter + U16 (Index), Program (Index));
+      end loop;
+   end if;
 
    while not CPU.Break_Command loop
       CPU.Decode_And_Execute;

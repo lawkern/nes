@@ -29,4 +29,14 @@ package body Memory is
       return Shift_Left (U16 (High), 8) + U16 (Low);
    end Merge;
 
+   function Kilobytes (N : Natural) return Natural is
+   begin
+      return 1_024 * N;
+   end Kilobytes;
+
+   function Megabytes (N : Natural) return Natural is
+   begin
+      return 1_024 * Kilobytes (N);
+   end Megabytes;
+
 end Memory;

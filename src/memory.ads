@@ -18,4 +18,7 @@ package Memory is
    procedure Write (Address : U16; Value : U8);
    function Merge (Low, High : U8) return U16;
 
+   function Kilobytes (N : Natural) return Natural;
+   function Megabytes (N : Natural) return Natural;
+
 end Memory;
