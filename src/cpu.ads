@@ -3,21 +3,11 @@
 --------------------------------------------------------------------------------
 
 with Ada.Text_IO; use Ada.Text_IO;
-with Interfaces;  use Interfaces;
+
+with Shared; use Shared;
+with Memory; use Memory;
 
 package CPU is
-   type U8 is new Unsigned_8;
-   type U16 is new Unsigned_16;
-   type U32 is new Unsigned_32;
-   type U64 is new Unsigned_64;
-
-   type S8 is new Integer_8;
-   type S16 is new Integer_16;
-   type S32 is new Integer_32;
-   type S64 is new Integer_64;
-
-   package U8_IO is new Ada.Text_IO.Modular_IO (U8);
-   package U16_IO is new Ada.Text_IO.Modular_IO (U16);
 
    -- NOTE: Registers.
    Program_Counter  : U16;
@@ -51,13 +41,7 @@ package CPU is
    Overflow_Flag_Mask     : constant U8 := not Overflow_Flag_Bit;
    Negative_Flag_Mask     : constant U8 := not Negative_Flag_Bit;
 
-   type Memory_Map is array (U16) of U8;
-   Memory : Memory_Map;
-
-   -- NOTE: The 256-byte stack grows downward from 01FF to 0100, indexed by the
-   -- 8-bit Stack_Pointer register.
-   Stack_Base : constant U16 := 16#01FF#;
-   Stack_Top  : constant U16 := 16#0100#;
+   Total_Cycles_Elapsed : Natural := 0;
 
    type Instruction_String is new String (1 .. 3);
    type Instruction_Info is record
@@ -271,11 +255,12 @@ package CPU is
       16#F8# => ("SED", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
       16#B8# => ("CLV", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
 
-      others => ("???", 0, 0, 0));
+      others => ("???", Bytes => 1, Cycles => 0, Page_Cross_Penalty => 0));
 
    procedure Power_On;
    procedure Reset;
-   procedure Print_Registers;
-   function Decode_And_Execute return Integer;
+
+   procedure Print_State;
+   procedure Decode_And_Execute;
 
 end CPU;

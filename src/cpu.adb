@@ -19,6 +19,8 @@ package body CPU is
       Decimal_Mode      := False;
       Overflow_Flag     := False;
       Negative_Flag     := False;
+
+      Total_Cycles_Elapsed := 0;
    end Power_On;
 
    procedure Reset is
@@ -26,16 +28,18 @@ package body CPU is
       Program_Counter   := 16#FFFC#;
       Stack_Pointer     := Stack_Pointer - 3;
       Interrupt_Disable := True;
+
+      Total_Cycles_Elapsed := 0;
    end Reset;
 
    -----------------------------------------------------------------------------
 
-   procedure Print_Registers is
+   procedure Print_State is
    begin
       U8_IO.Default_Base  := 16;
       U16_IO.Default_Base := 16;
 
-      Put ("PC:");
+      Put ("PC: ");
       U16_IO.Put (Program_Counter);
 
       Put (" | SP: ");
@@ -59,14 +63,11 @@ package body CPU is
       Put (" | OF:" & Boolean'Pos (Overflow_Flag)'Image);
       Put (" | NF:" & Boolean'Pos (Negative_Flag)'Image);
       New_Line;
-   end Print_Registers;
+
+      Put_Line ("Total Cycles Elapsed: " & Total_Cycles_Elapsed'Image);
+   end Print_State;
 
    -----------------------------------------------------------------------------
-
-   function Merge (Low, High : U8) return U16 is
-   begin
-      return Shift_Left (U16 (High), 8) + U16 (Low);
-   end Merge;
 
    function Negative (Value : U8) return Boolean is
    begin
@@ -78,100 +79,24 @@ package body CPU is
       return (Value and Overflow_Flag_Bit) /= 0;
    end Overflow;
 
-   -- NOTE: The following set of functions are intended to handle the different
-   -- addressing modes used by 6502 instructions. They pull one or more
-   -- additional bytes from the instruction stream and use them to address
-   -- memory
-
-   function Immediate return U8 is
-   begin
-      return Memory (Program_Counter + 1);
-   end Immediate;
-
-   function Relative return U8 is
-   begin
-      return Memory (Program_Counter + 1);
-   end Relative;
-
-   function Zero_Page return U16 is
-   begin
-      return U16 (Memory (Program_Counter + 1));
-   end Zero_Page;
-
-   function Zero_Page_X return U16 is
-   begin
-      return U16 (Memory (Program_Counter + 1) + Index_Register_X);
-   end Zero_Page_X;
-
-   function Zero_Page_Y return U16 is
-   begin
-      return U16 (Memory (Program_Counter + 1) + Index_Register_Y);
-   end Zero_Page_Y;
-
-   function Absolute return U16 is
-   begin
-      return Merge (Low  => Memory (Program_Counter + 1),
-                    High => Memory (Program_Counter + 2));
-   end Absolute;
-
-   function Absolute_X return U16 is
-   begin
-      return Merge (Low  => Memory (Program_Counter + 1),
-                    High => Memory (Program_Counter + 2)) + U16 (Index_Register_X);
-   end Absolute_X;
-
-   function Absolute_Y return U16 is
-      Data1, Data2 : U8;
-   begin
-      return Merge (Low  => Memory (Program_Counter + 1),
-                    High => Memory (Program_Counter + 2)) + U16 (Index_Register_Y);
-   end Absolute_Y;
-
-   function Indirect return U16 is
-      Base : U16;
-   begin
-      Base := Merge (Low => Memory (Program_Counter + 1),
-                     High => Memory (Program_Counter + 2));
-
-      return Merge (Low  => Memory (Base + 0),
-                    High => Memory (Base + 1));
-   end Indirect;
-
-   function Indirect_X return U16 is
-      Base : U16;
-   begin
-      Base := U16 (Memory (Program_Counter + 1)) + U16 (Index_Register_X);
-      return Merge (Low => Memory (Base + 0), High => Memory (Base + 1));
-   end Indirect_X;
-
-   function Indirect_Y return U16 is
-      Base : U8;
-   begin
-      Base := Memory (Program_Counter + 1);
-      return Merge (Low => Base + 0, High => Base + 1) + U16 (Index_Register_Y);
-   end Indirect_Y;
-
-   -- NOTE: Stack helper functions.
-
    procedure Push8 (Value : U8) is
    begin
       Stack_Pointer := Stack_Pointer - 1;
-
-      Memory (Stack_Top + U16 (Stack_Pointer)) := Value;
+      Write(Stack_Top + U16 (Stack_Pointer), Value);
    end Push8;
 
    procedure Push16 (Value : U16) is
    begin
       Stack_Pointer := Stack_Pointer - 2;
 
-      Memory (Stack_Top + U16 (Stack_Pointer) + 0) := U8 (Shift_Right (Value, 8) and 16#00FF#);
-      Memory (Stack_Top + U16 (Stack_Pointer) + 1) := U8 (Shift_Right (Value, 0) and 16#00FF#);
+      Write ((Stack_Top + U16 (Stack_Pointer) + 0), U8 (Shift_Right (Value, 8) and 16#00FF#));
+      Write ((Stack_Top + U16 (Stack_Pointer) + 1), U8 (Shift_Right (Value, 0) and 16#00FF#));
    end Push16;
 
    function Pop8 return U8 is
       Result : U8;
    begin
-      Result := Memory (Stack_Base - U16 (Stack_Pointer));
+      Result := Read (Stack_Base - U16 (Stack_Pointer));
 
       Stack_Pointer := Stack_Pointer + 1;
       return Result;
@@ -180,16 +105,89 @@ package body CPU is
    function Pop16 return U16 is
       High, Low : U8;
    begin
-      Low  := Memory (Stack_Base - U16 (Stack_Pointer + 0));
-      High := Memory (Stack_Base - U16 (Stack_Pointer + 1));
+      Low  := Read (Stack_Base - U16 (Stack_Pointer + 0));
+      High := Read (Stack_Base - U16 (Stack_Pointer + 1));
 
       Stack_Pointer := Stack_Pointer + 2;
       return Merge (High => High, Low => Low);
    end Pop16;
 
+   -- NOTE: The following set of functions are intended to handle the different
+   -- addressing modes used by 6502 instructions. They pull one or more
+   -- additional bytes from the instruction stream and use them to address
+   -- memory
+
+   function Immediate return U8 is
+   begin
+      return Read (Program_Counter + 1);
+   end Immediate;
+
+   function Relative return U8 is
+   begin
+      return Read (Program_Counter + 1);
+   end Relative;
+
+   function Zero_Page return U16 is
+   begin
+      return U16 (Read (Program_Counter + 1));
+   end Zero_Page;
+
+   function Zero_Page_X return U16 is
+   begin
+      return U16 (Read (Program_Counter + 1) + Index_Register_X);
+   end Zero_Page_X;
+
+   function Zero_Page_Y return U16 is
+   begin
+      return U16 (Read (Program_Counter + 1) + Index_Register_Y);
+   end Zero_Page_Y;
+
+   function Absolute return U16 is
+   begin
+      return Merge (Low  => Read (Program_Counter + 1),
+                    High => Read (Program_Counter + 2));
+   end Absolute;
+
+   function Absolute_X return U16 is
+   begin
+      return Merge (Low  => Read (Program_Counter + 1),
+                    High => Read (Program_Counter + 2)) + U16 (Index_Register_X);
+   end Absolute_X;
+
+   function Absolute_Y return U16 is
+      Data1, Data2 : U8;
+   begin
+      return Merge (Low  => Read (Program_Counter + 1),
+                    High => Read (Program_Counter + 2)) + U16 (Index_Register_Y);
+   end Absolute_Y;
+
+   function Indirect return U16 is
+      Base : U16;
+   begin
+      Base := Merge (Low  => Read (Program_Counter + 1),
+                     High => Read (Program_Counter + 2));
+
+      return Merge (Low  => Read (Base + 0),
+                    High => Read (Base + 1));
+   end Indirect;
+
+   function Indirect_X return U16 is
+      Base : U16;
+   begin
+      Base := U16 (Read (Program_Counter + 1)) + U16 (Index_Register_X);
+      return Merge (Low => Read (Base + 0), High => Read (Base + 1));
+   end Indirect_X;
+
+   function Indirect_Y return U16 is
+      Base : U8;
+   begin
+      Base := Read (Program_Counter + 1);
+      return Merge (Low => Base + 0, High => Base + 1) + U16 (Index_Register_Y);
+   end Indirect_Y;
+
    -----------------------------------------------------------------------------
 
-   function Decode_And_Execute return Integer is
+   procedure Decode_And_Execute is
       Unimplemented_Instruction : exception;
 
       Instruction, Family, Mode, Modifier : U8;
@@ -232,17 +230,17 @@ package body CPU is
 
       procedure STA (Address : U16) is
       begin
-         Memory (Address) := Accumulator;
+         Write (Address, Accumulator);
       end STA;
 
       procedure STX (Address : U16) is
       begin
-         Memory (Address) := Index_Register_X;
+         Write (Address, Index_Register_X);
       end STX;
 
       procedure STY (Address : U16) is
       begin
-         Memory (Address) := Index_Register_Y;
+         Write (Address, Index_Register_Y);
       end STY;
 
       ------------------------------------------------------------------------
@@ -327,17 +325,21 @@ package body CPU is
          Negative_Flag := Negative (Accumulator);
       end SBC;
 
-      procedure INC (Value : in out U8) is
+      procedure INC (Address : U16) is
+         Value : U8;
       begin
-         Value := Value + 1;
+         Value := Read (Address) + 1;
+         Write (Address, Value);
 
          Zero_Flag     := (Value = 0);
          Negative_Flag := Negative (Value);
       end INC;
 
-      procedure DEC (Value : in out U8) is
+      procedure DEC (Address : U16) is
+         Value : U8;
       begin
-         Value := Value - 1;
+         Value := Read (Address) - 1;
+         Write (Address, Value);
 
          Zero_Flag     := (Value = 0);
          Negative_Flag := Negative (Value);
@@ -413,58 +415,104 @@ package body CPU is
 
       --------------------------------------------------------------
 
-      procedure ASL (Value : in out U8) is
+      -- TODO: De-duplicate instructions that need to update both addresses and
+      -- the accumulator register.
+
+      procedure ASL is
+         Previous : U8;
+      begin
+         Previous    := Accumulator;
+         Accumulator := Shift_Left (Previous, 1);
+
+         Carry_Flag    := (Previous and 2#1000_0000#) /= 0;
+         Zero_Flag     := (Accumulator = 0);
+         Negative_Flag := Negative (Accumulator);
+      end ASL;
+
+      procedure ASL (Address : U16) is
          Result, Previous : U8;
       begin
-         Previous := Value;
+         Previous := Read (Address);
          Result   := Shift_Left (Previous, 1);
-
-         Value := Result;
+         Write (Address, Result);
 
          Carry_Flag    := (Previous and 2#1000_0000#) /= 0;
          Zero_Flag     := (Result = 0);
          Negative_Flag := Negative (Result);
       end ASL;
 
-      procedure LSR (Value : in out U8) is
+      procedure LSR is
+         Previous : U8;
+      begin
+         Previous    := Accumulator;
+         Accumulator := Shift_Right (Previous, 1);
+
+         Carry_Flag    := (Previous and 2#1000_0000#) /= 0;
+         Zero_Flag     := (Accumulator = 0);
+         Negative_Flag := Negative (Accumulator);
+      end LSR;
+
+      procedure LSR (Address : U16) is
          Result, Previous : U8;
       begin
-         Previous := Value;
+         Previous := Read (Address);
          Result   := Shift_Right (Previous, 1);
-
-         Value := Result;
+         Write (Address, Result);
 
          Carry_Flag    := (Previous and 2#1000_0000#) /= 0;
          Zero_Flag     := (Result = 0);
          Negative_Flag := Negative (Result);
       end LSR;
 
-      procedure ROL (Value : in out U8) is
+      procedure ROL is
+         Previous, C : U8;
+      begin
+         C := (if Carry_Flag then 2#0000_0001# else 2#0000_0000#);
+
+         Previous := Accumulator;
+         Accumulator := Shift_Left (Previous, 1) or C;
+
+         Carry_Flag    := (Previous and 2#1000_0000#) /= 0;
+         Zero_Flag     := (Accumulator = 0);
+         Negative_Flag := Negative (Accumulator);
+      end ROL;
+
+      procedure ROL (Address : U16) is
          Result, Previous, C : U8;
       begin
          C := (if Carry_Flag then 2#0000_0001# else 2#0000_0000#);
 
-         Previous := Value;
+         Previous := Read (Address);
          Result   := Shift_Left (Previous, 1);
          Result   := Result or C;
-
-         Value := Result;
+         Write (Address, Result);
 
          Carry_Flag    := (Previous and 2#1000_0000#) /= 0;
          Zero_Flag     := (Result = 0);
          Negative_Flag := Negative (Result);
       end ROL;
 
-      procedure ROR (Value : in out U8) is
+      procedure ROR is
+         Previous, C : U8;
+      begin
+         C := (if Carry_Flag then 2#1000_0000# else 2#0000_0000#);
+
+         Previous := Accumulator;
+         Accumulator := Shift_Right (Previous, 1) or C;
+
+         Carry_Flag    := (Previous and 2#0000_0001#) /= 0;
+         Zero_Flag     := (Accumulator = 0);
+         Negative_Flag := Negative (Accumulator);
+      end ROR;
+
+      procedure ROR (Address : U16) is
          Result, Previous, C : U8;
       begin
          C := (if Carry_Flag then 2#1000_0000# else 2#0000_0000#);
 
-         Previous := Value;
-         Result   := Shift_Right (Previous, 1);
-         Result   := Result or C;
-
-         Value := Result;
+         Previous := Read (Address);
+         Result   := Shift_Right (Previous, 1) or C;
+         Write (Address, Result);
 
          Carry_Flag    := (Previous and 2#0000_0001#) /= 0;
          Zero_Flag     := (Result = 0);
@@ -696,34 +744,23 @@ package body CPU is
 
       procedure Print_Instruction is
       begin
-         Put ("   Instruction     : ");
+         Put (String (Instructions (Instruction).Symbol) & " (");
          U8_IO.Put (Instruction, Base => 16);
+         Put (")");
          New_Line;
 
-         Put ("   Family          : ");
-         U8_IO.Put (Family, Base => 2);
-         New_Line;
-
-         Put ("   Addressing Mode : ");
-         U8_IO.Put (Mode, Base => 2);
-         New_Line;
-
-         Put ("   Modifier        : ");
-         U8_IO.Put (Modifier, Base => 2);
-         New_Line;
-
-         Put_Line ("   Cycles          : " & Cycles'Image);
-         Put_Line ("   Bytes           : " & Bytes'Image);
+         Put_Line ("   Cycles      : " & Cycles'Image);
+         Put_Line ("   Bytes       : " & Bytes'Image);
 
          if Bytes > 1 then
-            Put ("   Data Byte 1     : ");
-            U8_IO.Put (Data1, Base => 16);
+            Put ("   Data Byte 1 : ");
+            U8_IO.Put (Read (Program_Counter + 1), Base => 16);
             New_Line;
          end if;
 
          if Bytes > 2 then
-            Put ("   Data Byte 2     : ");
-            U8_IO.Put (Data2, Base => 16);
+            Put ("   Data Byte 2 : ");
+            U8_IO.Put (Read (Program_Counter + 2), Base => 16);
             New_Line;
          end if;
 
@@ -732,7 +769,7 @@ package body CPU is
 
       --------------------------------------------------------------------------
    begin
-      Instruction := Memory (Program_Counter);
+      Instruction := Read (Program_Counter);
       Family      := Shift_Right (Instruction, 5) and 2#000_0111#;
       Mode        := Shift_Right (Instruction, 2) and 2#000_0111#;
       Modifier    := Shift_Right (Instruction, 0) and 2#000_0011#;
@@ -744,13 +781,13 @@ package body CPU is
          when 16#EA# =>NOP;
 
          when 16#A9# =>LDA (Immediate);
-         when 16#A5# =>LDA (Memory (Zero_Page));
-         when 16#B5# =>LDA (Memory (Zero_Page_X));
-         when 16#AD# =>LDA (Memory (Absolute));
-         when 16#BD# =>LDA (Memory (Absolute_X));
-         when 16#B9# =>LDA (Memory (Absolute_Y));
-         when 16#A1# =>LDA (Memory (Indirect_X));
-         when 16#B1# =>LDA (Memory (Indirect_Y));
+         when 16#A5# =>LDA (Read (Zero_Page));
+         when 16#B5# =>LDA (Read (Zero_Page_X));
+         when 16#AD# =>LDA (Read (Absolute));
+         when 16#BD# =>LDA (Read (Absolute_X));
+         when 16#B9# =>LDA (Read (Absolute_Y));
+         when 16#A1# =>LDA (Read (Indirect_X));
+         when 16#B1# =>LDA (Read (Indirect_Y));
 
          when 16#85# =>STA (Zero_Page);
          when 16#95# =>STA (Zero_Page_X);
@@ -761,20 +798,20 @@ package body CPU is
          when 16#91# =>STA (Indirect_Y);
 
          when 16#A2# =>LDX (Immediate);
-         when 16#A6# =>LDX (Memory (Zero_Page));
-         when 16#B6# =>LDX (Memory (Zero_Page_X));
-         when 16#AE# =>LDX (Memory (Absolute));
-         when 16#BE# =>LDX (Memory (Absolute_X));
+         when 16#A6# =>LDX (Read (Zero_Page));
+         when 16#B6# =>LDX (Read (Zero_Page_X));
+         when 16#AE# =>LDX (Read (Absolute));
+         when 16#BE# =>LDX (Read (Absolute_X));
 
          when 16#86# =>STX (Zero_Page);
          when 16#96# =>STX (Zero_Page_Y);
          when 16#8E# =>STX (Absolute);
 
          when 16#A0# =>LDY (Immediate);
-         when 16#A4# =>LDY (Memory (Zero_Page));
-         when 16#B4# =>LDY (Memory (Zero_Page_X));
-         when 16#AC# =>LDY (Memory (Absolute));
-         when 16#BC# =>LDY (Memory (Absolute_X));
+         when 16#A4# =>LDY (Read (Zero_Page));
+         when 16#B4# =>LDY (Read (Zero_Page_X));
+         when 16#AC# =>LDY (Read (Absolute));
+         when 16#BC# =>LDY (Read (Absolute_X));
 
          when 16#84# =>STY (Zero_Page);
          when 16#94# =>STY (Zero_Page_X);
@@ -786,32 +823,32 @@ package body CPU is
          when 16#98# =>TYA;
 
          when 16#69# =>ADC (Immediate);
-         when 16#65# =>ADC (Memory (Zero_Page));
-         when 16#75# =>ADC (Memory (Zero_Page_X));
-         when 16#6D# =>ADC (Memory (Absolute));
-         when 16#7D# =>ADC (Memory (Absolute_X));
-         when 16#79# =>ADC (Memory (Absolute_Y));
-         when 16#61# =>ADC (Memory (Indirect_X));
-         when 16#71# =>ADC (Memory (Indirect_Y));
+         when 16#65# =>ADC (Read (Zero_Page));
+         when 16#75# =>ADC (Read (Zero_Page_X));
+         when 16#6D# =>ADC (Read (Absolute));
+         when 16#7D# =>ADC (Read (Absolute_X));
+         when 16#79# =>ADC (Read (Absolute_Y));
+         when 16#61# =>ADC (Read (Indirect_X));
+         when 16#71# =>ADC (Read (Indirect_Y));
 
          when 16#E9# =>SBC (Immediate);
-         when 16#E5# =>SBC (Memory (Zero_Page));
-         when 16#F5# =>SBC (Memory (Zero_Page_X));
-         when 16#ED# =>SBC (Memory (Absolute));
-         when 16#FD# =>SBC (Memory (Absolute_X));
-         when 16#F9# =>SBC (Memory (Absolute_Y));
-         when 16#E1# =>SBC (Memory (Indirect_X));
-         when 16#F1# =>SBC (Memory (Indirect_Y));
+         when 16#E5# =>SBC (Read (Zero_Page));
+         when 16#F5# =>SBC (Read (Zero_Page_X));
+         when 16#ED# =>SBC (Read (Absolute));
+         when 16#FD# =>SBC (Read (Absolute_X));
+         when 16#F9# =>SBC (Read (Absolute_Y));
+         when 16#E1# =>SBC (Read (Indirect_X));
+         when 16#F1# =>SBC (Read (Indirect_Y));
 
-         when 16#E6# =>INC (Memory (Zero_Page));
-         when 16#F6# =>INC (Memory (Zero_Page_X));
-         when 16#EE# =>INC (Memory (Absolute));
-         when 16#FE# =>INC (Memory (Absolute_X));
+         when 16#E6# =>INC (Zero_Page);
+         when 16#F6# =>INC (Zero_Page_X);
+         when 16#EE# =>INC (Absolute);
+         when 16#FE# =>INC (Absolute_X);
 
-         when 16#C6# =>DEC (Memory (Zero_Page));
-         when 16#D6# =>DEC (Memory (Zero_Page_X));
-         when 16#CE# =>DEC (Memory (Absolute));
-         when 16#DE# =>DEC (Memory (Absolute_X));
+         when 16#C6# =>DEC (Zero_Page);
+         when 16#D6# =>DEC (Zero_Page_X);
+         when 16#CE# =>DEC (Absolute);
+         when 16#DE# =>DEC (Absolute_X);
 
          when 16#E8# =>INX;
          when 16#CA# =>DEX;
@@ -819,74 +856,74 @@ package body CPU is
          when 16#88# =>DEY;
 
          when 16#29# =>ANDA (Immediate);
-         when 16#25# =>ANDA (Memory (Zero_Page));
-         when 16#35# =>ANDA (Memory (Zero_Page_X));
-         when 16#2D# =>ANDA (Memory (Absolute));
-         when 16#3D# =>ANDA (Memory (Absolute_X));
-         when 16#39# =>ANDA (Memory (Absolute_Y));
-         when 16#21# =>ANDA (Memory (Indirect_X));
-         when 16#31# =>ANDA (Memory (Indirect_Y));
+         when 16#25# =>ANDA (Read (Zero_Page));
+         when 16#35# =>ANDA (Read (Zero_Page_X));
+         when 16#2D# =>ANDA (Read (Absolute));
+         when 16#3D# =>ANDA (Read (Absolute_X));
+         when 16#39# =>ANDA (Read (Absolute_Y));
+         when 16#21# =>ANDA (Read (Indirect_X));
+         when 16#31# =>ANDA (Read (Indirect_Y));
 
          when 16#09# =>ORA (Immediate);
-         when 16#05# =>ORA (Memory (Zero_Page));
-         when 16#15# =>ORA (Memory (Zero_Page_X));
-         when 16#0D# =>ORA (Memory (Absolute));
-         when 16#1D# =>ORA (Memory (Absolute_X));
-         when 16#19# =>ORA (Memory (Absolute_Y));
-         when 16#01# =>ORA (Memory (Indirect_X));
-         when 16#11# =>ORA (Memory (Indirect_Y));
+         when 16#05# =>ORA (Read (Zero_Page));
+         when 16#15# =>ORA (Read (Zero_Page_X));
+         when 16#0D# =>ORA (Read (Absolute));
+         when 16#1D# =>ORA (Read (Absolute_X));
+         when 16#19# =>ORA (Read (Absolute_Y));
+         when 16#01# =>ORA (Read (Indirect_X));
+         when 16#11# =>ORA (Read (Indirect_Y));
 
          when 16#49# =>EOR (Immediate);
-         when 16#45# =>EOR (Memory (Zero_Page));
-         when 16#55# =>EOR (Memory (Zero_Page_X));
-         when 16#4D# =>EOR (Memory (Absolute));
-         when 16#5D# =>EOR (Memory (Absolute_X));
-         when 16#59# =>EOR (Memory (Absolute_Y));
-         when 16#41# =>EOR (Memory (Indirect_X));
-         when 16#51# =>EOR (Memory (Indirect_Y));
+         when 16#45# =>EOR (Read (Zero_Page));
+         when 16#55# =>EOR (Read (Zero_Page_X));
+         when 16#4D# =>EOR (Read (Absolute));
+         when 16#5D# =>EOR (Read (Absolute_X));
+         when 16#59# =>EOR (Read (Absolute_Y));
+         when 16#41# =>EOR (Read (Indirect_X));
+         when 16#51# =>EOR (Read (Indirect_Y));
 
-         when 16#24# =>BIT (Memory (Zero_Page));
-         when 16#2C# =>BIT (Memory (Absolute));
+         when 16#24# =>BIT (Read (Zero_Page));
+         when 16#2C# =>BIT (Read (Absolute));
 
-         when 16#0A# =>ASL (Accumulator);
-         when 16#06# =>ASL (Memory (Zero_Page));
-         when 16#16# =>ASL (Memory (Zero_Page_X));
-         when 16#0E# =>ASL (Memory (Absolute));
-         when 16#1E# =>ASL (Memory (Absolute_X));
+         when 16#0A# =>ASL;
+         when 16#06# =>ASL (Zero_Page);
+         when 16#16# =>ASL (Zero_Page_X);
+         when 16#0E# =>ASL (Absolute);
+         when 16#1E# =>ASL (Absolute_X);
 
-         when 16#4A# =>LSR (Accumulator);
-         when 16#46# =>LSR (Memory (Zero_Page));
-         when 16#56# =>LSR (Memory (Zero_Page_X));
-         when 16#4E# =>LSR (Memory (Absolute));
-         when 16#5E# =>LSR (Memory (Absolute_X));
+         when 16#4A# =>LSR;
+         when 16#46# =>LSR (Zero_Page);
+         when 16#56# =>LSR (Zero_Page_X);
+         when 16#4E# =>LSR (Absolute);
+         when 16#5E# =>LSR (Absolute_X);
 
-         when 16#2A# =>ROL (Accumulator);
-         when 16#26# =>ROL (Memory (Zero_Page));
-         when 16#36# =>ROL (Memory (Zero_Page_X));
-         when 16#2E# =>ROL (Memory (Absolute));
-         when 16#3E# =>ROL (Memory (Absolute_X));
+         when 16#2A# =>ROL;
+         when 16#26# =>ROL (Zero_Page);
+         when 16#36# =>ROL (Zero_Page_X);
+         when 16#2E# =>ROL (Absolute);
+         when 16#3E# =>ROL (Absolute_X);
 
-         when 16#6A# =>ROR (Accumulator);
-         when 16#66# =>ROR (Memory (Zero_Page));
-         when 16#76# =>ROR (Memory (Zero_Page_X));
-         when 16#6E# =>ROR (Memory (Absolute));
-         when 16#7E# =>ROR (Memory (Absolute_X));
+         when 16#6A# =>ROR;
+         when 16#66# =>ROR (Zero_Page);
+         when 16#76# =>ROR (Zero_Page_X);
+         when 16#6E# =>ROR (Absolute);
+         when 16#7E# =>ROR (Absolute_X);
 
          when 16#C9# =>CMP (Immediate);
-         when 16#C5# =>CMP (Memory (Zero_Page));
-         when 16#D5# =>CMP (Memory (Zero_Page_X));
-         when 16#CD# =>CMP (Memory (Absolute));
-         when 16#DD# =>CMP (Memory (Absolute_X));
-         when 16#D9# =>CMP (Memory (Absolute_Y));
-         when 16#C1# =>CMP (Memory (Indirect_X));
-         when 16#D1# =>CMP (Memory (Indirect_Y));
+         when 16#C5# =>CMP (Read (Zero_Page));
+         when 16#D5# =>CMP (Read (Zero_Page_X));
+         when 16#CD# =>CMP (Read (Absolute));
+         when 16#DD# =>CMP (Read (Absolute_X));
+         when 16#D9# =>CMP (Read (Absolute_Y));
+         when 16#C1# =>CMP (Read (Indirect_X));
+         when 16#D1# =>CMP (Read (Indirect_Y));
 
          when 16#E0# =>CPX (Immediate);
-         when 16#E4# =>CPX (Memory (Zero_Page));
-         when 16#EC# =>CPX (Memory (Absolute));
+         when 16#E4# =>CPX (Read (Zero_Page));
+         when 16#EC# =>CPX (Read (Absolute));
          when 16#C0# =>CPY (Immediate);
-         when 16#C4# =>CPY (Memory (Zero_Page));
-         when 16#CC# =>CPY (Memory (Absolute));
+         when 16#C4# =>CPY (Read (Zero_Page));
+         when 16#CC# =>CPY (Read (Absolute));
 
          when 16#90# =>BCC (Relative);
          when 16#B0# =>BCS (Relative);
@@ -922,12 +959,13 @@ package body CPU is
          when others =>raise Unimplemented_Instruction;
       end case;
 
-      Put_Line (String (Instructions (Instruction).Symbol));
+      Total_Cycles_Elapsed := Total_Cycles_Elapsed + Cycles;
+
+      Put_Line ("-----------------------------------------");
       Print_Instruction;
+      Print_State;
 
       Program_Counter := Program_Counter + U16 (Bytes);
-
-      return Cycles;
    end Decode_And_Execute;
 
 end CPU;
