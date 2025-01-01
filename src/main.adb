@@ -29,9 +29,9 @@ begin
    Put_Line ("---------------------------------------------------");
 
    CPU.Power_On;
-   CPU.Print_State;
 
    if Argument_Count = 1 then
+      CPU.Program_Counter := 16#C000#;
       Cartridge.Load (Argument (1));
    else
       for Index in Program'Range loop

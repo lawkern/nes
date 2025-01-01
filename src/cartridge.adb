@@ -2,34 +2,32 @@
 -- (c) copyright 2024 Lawrence D. Kern /////////////////////////////////////////
 --------------------------------------------------------------------------------
 
-with Ada.Text_IO; use Ada.Text_IO;
-with Interfaces; use Interfaces;
-
-with CPU;    use CPU;
-with Memory; use Memory;
-
 package body Cartridge is
 
    procedure Load (Path : String) is
       package Header_IO is new Ada.Sequential_IO (Cartridge_Header);
       use Header_IO;
 
-      package Content_IO is new Ada.Sequential_IO (U8);
+      package Content_IO is new Ada.Direct_IO (U8);
       use Content_IO;
 
       Header       : Cartridge_Header;
       Header_File  : Header_IO.File_Type;
       Content_File : Content_IO.File_Type;
 
-      Use_Trainer_Area           : Boolean := False;
       PRG_ROM_High, CHR_ROM_High : U8      := 0;
       PRG_ROM_Size, CHR_ROM_Size : Natural := 0;
+
+      Use_Trainer_Area : Boolean := False;
    begin
       Put_Line ("Loading Cartridge: " & Path);
 
+      -- NOTE: Read out the header.
       Header_IO.Open (Header_File, In_File, Path);
       Header_IO.Read (Header_File, Header);
+      Header_IO.Close (Header_File);
 
+      -- NOTE: Check for the NES header's identifier.
       if
         (Header.Identifier (1) /= 'N') or
         (Header.Identifier (2) /= 'E') or
@@ -39,9 +37,7 @@ package body Cartridge is
          raise Invalid_Format;
       end if;
 
-      Put_Line ("Cartridge Header: " & Header'Image);
-
-      Use_Trainer_Area := (Header.Flags6 and 2#0000_0100#) /= 0;
+      -- Put_Line ("Cartridge Header: " & Header'Image);
 
       PRG_ROM_High := Header.PRG_CHR_ROM_Size_High and 2#0000_1111#;
       CHR_ROM_High := Shift_Right (Header.PRG_CHR_ROM_Size_High, 4);
@@ -66,11 +62,33 @@ package body Cartridge is
            Natural (Merge (Low => Header.CHR_ROM_Size_Low, High => CHR_ROM_High));
       end if;
 
-      Put_Line ("Use Trainer Area: " & Use_Trainer_Area'Image);
-      Put_Line ("PRG ROM Size: " & PRG_ROM_Size'Image);
-      Put_Line ("CHR ROM Size: " & CHR_ROM_Size'Image);
+      -- Put_Line ("Use Trainer Area: " & Use_Trainer_Area'Image);
+      -- Put_Line ("PRG ROM Size: " & PRG_ROM_Size'Image);
+      -- Put_Line ("CHR ROM Size: " & CHR_ROM_Size'Image);
 
-      Header_IO.Close (Header_File);
+      Use_Trainer_Area := (Header.Flags6 and 2#0000_0100#) /= 0;
+
+      Content_IO.Open (Content_File, In_File, Path);
+      declare
+         PRG_Index : Content_IO.Positive_Count := 1 + 16;
+
+         Value        : U8;
+         Memory_Base1 : U16 := 16#8000#;
+         Memory_Base2 : U16 := 16#C000#;
+      begin
+         if Use_Trainer_Area then
+            PRG_Index := PRG_Index + 512;
+         end if;
+
+         Content_IO.Set_Index (Content_File, PRG_Index);
+
+         for Offset in 0 .. PRG_ROM_Size - 1 loop
+            Read (Content_File, Value);
+            Memory.Map (Memory_Base1 + U16 (Offset)) := Value;
+            Memory.Map (Memory_Base2 + U16 (Offset)) := Value;
+         end loop;
+      end;
+      Content_IO.Close (Content_File);
    end Load;
 
 end Cartridge;
