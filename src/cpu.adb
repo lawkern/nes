@@ -300,9 +300,6 @@ package body CPU is
       procedure TXS is
       begin
          Stack_Pointer := Index_Register_X;
-
-         Zero_Flag     := (Stack_Pointer = 0);
-         Negative_Flag := Negative (Stack_Pointer);
       end TXS;
 
       procedure TYA is
@@ -334,17 +331,19 @@ package body CPU is
       end ADC;
 
       procedure SBC (Value : U8) is
-         Result : U16;
+         Result   : U8;
       begin
-         Result := U16 (Accumulator) - U16 (Value);
+         Result := Accumulator + (not Value);
          if Carry_Flag then
-            Result := Result - (not 1);
+            Result := Result + 1;
          end if;
 
-         Carry_Flag    := (Result > U16 (Value));
+         Carry_Flag    := (not (Result > 127));
          Zero_Flag     := (Result = 0);
-         Overflow_Flag := ((Result xor U16 (Accumulator)) and (Result xor (not U16 (Value))) and 16#80#) /= 0;
-         Negative_Flag := Negative (Accumulator);
+         Overflow_Flag := ((Result xor Accumulator) and (Result xor (not Value)) and 16#80#) /= 0;
+         Negative_Flag := Negative (Result);
+
+         Accumulator := Result;
       end SBC;
 
       procedure INC (Address : U16) is
@@ -469,7 +468,7 @@ package body CPU is
          Previous    := Accumulator;
          Accumulator := Shift_Right (Previous, 1);
 
-         Carry_Flag    := (Previous and 2#1000_0000#) /= 0;
+         Carry_Flag    := (Previous and 2#0000_0001#) /= 0;
          Zero_Flag     := (Accumulator = 0);
          Negative_Flag := Negative (Accumulator);
       end LSR;
@@ -546,30 +545,30 @@ package body CPU is
       procedure CMP (Value : U8) is
          Result : U8;
       begin
-         Result := Value - Accumulator;
+         Result := Accumulator - Value;
 
          Carry_Flag    := (Accumulator >= Value);
-         Zero_Flag     := (Result = 0);
+         Zero_Flag     := (Accumulator = Value);
          Negative_Flag := Negative (Result);
       end CMP;
 
       procedure CPX (Value : U8) is
          Result : U8;
       begin
-         Result := Value - Index_Register_X;
+         Result := Index_Register_X - Value;
 
-         Carry_Flag    := (Accumulator >= Value);
-         Zero_Flag     := (Result = 0);
+         Carry_Flag    := (Index_Register_X >= Value);
+         Zero_Flag     := (Index_Register_X = Value);
          Negative_Flag := Negative (Result);
       end CPX;
 
       procedure CPY (Value : U8) is
          Result : U8;
       begin
-         Result := Value - Index_Register_Y;
+         Result := Index_Register_Y - Value;
 
-         Carry_Flag    := (Accumulator >= Value);
-         Zero_Flag     := (Result = 0);
+         Carry_Flag    := (Index_Register_Y >= Value);
+         Zero_Flag     := (Index_Register_Y = Value);
          Negative_Flag := Negative (Result);
       end CPY;
 
