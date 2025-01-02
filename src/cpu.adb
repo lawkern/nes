@@ -151,13 +151,23 @@ package body CPU is
    end Absolute_Y;
 
    function Indirect return U16 is
-      Base : U16;
+      Address1, Address2 : U16;
    begin
-      Base := Merge (Low => Read (Program_Counter + 1),
-                     High => Read (Program_Counter + 2));
+      Address1 := Merge (Low  => Read (Program_Counter + 1),
+                         High => Read (Program_Counter + 2));
 
-      return Merge (Low  => Read (Base + 0),
-                    High => Read (Base + 1));
+      -- NOTE: Due to a bug in the 6502 CPU, if the provided address crosses a
+      -- page boundary (i.e. it ends in FF), the CPU will fail to increment the
+      -- page for the second byte. For example, JMP (03FF) read bytes at 03FF
+      -- and 0300, instead of 03FF and 0400.
+
+      Address2 := Address1 + 1;
+      if (Address1 and 16#FF#) = 16#FF# then
+         Address2 := Address2 - 16#0100#;
+      end if;
+
+      return Merge (Low  => Read (Address1),
+                    High => Read (Address2));
    end Indirect;
 
    function Indirect_X return U16 is
@@ -306,19 +316,21 @@ package body CPU is
       -------------------------------------------------------------------
 
       procedure ADC (Value : U8) is
-         Result : U16;
+         Result16 : U16;
+         Result : U8;
       begin
-         Result := U16 (Accumulator) + U16 (Value);
+         Result16 := U16 (Accumulator) + U16 (Value);
          if Carry_Flag then
-            Result := Result + 1;
+            Result16 := Result16 + 1;
          end if;
+         Result := U8 (Result16 mod 256);
 
-         Accumulator := U8 (Result mod 256);
-
-         Carry_Flag    := (Result > 16#FF#);
+         Carry_Flag    := (Result16 > 16#FF#);
          Zero_Flag     := (Result = 0);
-         Overflow_Flag := ((Result xor U16 (Accumulator)) and (Result xor U16 (Value)) and 16#80#) /= 0;
-         Negative_Flag := Negative (Accumulator);
+         Overflow_Flag := ((Result xor Accumulator) and (Result xor Value) and 16#80#) /= 0;
+         Negative_Flag := Negative (Result);
+
+         Accumulator := Result;
       end ADC;
 
       procedure SBC (Value : U8) is
@@ -419,8 +431,8 @@ package body CPU is
          Result := Accumulator and Value;
 
          Zero_Flag     := (Result = 0);
-         Overflow_Flag := Overflow (Result);
-         Negative_Flag := Negative (Result);
+         Overflow_Flag := Overflow (Value);
+         Negative_Flag := Negative (Value);
       end BIT;
 
       --------------------------------------------------------------
@@ -758,7 +770,7 @@ package body CPU is
 
       ---------------------------------------------------------------
 
-      procedure Print_State is
+      procedure Print_State (Display_Flags : Boolean := True) is
          TAB : Character := Character'Val (9);
       begin
          Put_Hex (Program_Counter);
@@ -815,18 +827,22 @@ package body CPU is
 
          Put (" PPU:  0,  0");
 
-         Put (" CYC:" & Total_Cycles_Elapsed'Image);
-         for I in 1 .. 15 - Total_Cycles_Elapsed'Image'Length loop
-            Put (" ");
-         end loop;
+         Put (" CYC:");
+         Put (Total_Cycles_Elapsed'Image);
 
-         Put ("CF:" & Boolean'Pos (Carry_Flag)'Image);
-         Put (" ZF:" & Boolean'Pos (Zero_Flag)'Image);
-         Put (" ID:" & Boolean'Pos (Interrupt_Disable)'Image);
-         Put (" DM:" & Boolean'Pos (Decimal_Mode)'Image);
-         Put (" BC:" & Boolean'Pos (Break_Command)'Image);
-         Put (" OF:" & Boolean'Pos (Overflow_Flag)'Image);
-         Put (" NF:" & Boolean'Pos (Negative_Flag)'Image);
+         if Display_Flags then
+            for I in 1 .. 15 - Total_Cycles_Elapsed'Image'Length loop
+               Put (" ");
+            end loop;
+
+            Put ("CF:" & Boolean'Pos (Carry_Flag)'Image);
+            Put (" ZF:" & Boolean'Pos (Zero_Flag)'Image);
+            Put (" ID:" & Boolean'Pos (Interrupt_Disable)'Image);
+            Put (" DM:" & Boolean'Pos (Decimal_Mode)'Image);
+            Put (" BC:" & Boolean'Pos (Break_Command)'Image);
+            Put (" OF:" & Boolean'Pos (Overflow_Flag)'Image);
+            Put (" NF:" & Boolean'Pos (Negative_Flag)'Image);
+         end if;
 
          New_Line;
       end Print_State;
