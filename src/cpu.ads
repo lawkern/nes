@@ -2,7 +2,8 @@
 -- (c) copyright 2024 Lawrence D. Kern /////////////////////////////////////////
 --------------------------------------------------------------------------------
 
-with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Text_IO;    use Ada.Text_IO;
+with Ada.Exceptions; use Ada.Exceptions;
 
 with Shared; use Shared;
 with Memory; use Memory;
@@ -259,8 +260,7 @@ package CPU is
 
    procedure Power_On;
    procedure Reset;
-
-   procedure Print_State;
    procedure Decode_And_Execute;
+   procedure Print_Stack;
 
 end CPU;

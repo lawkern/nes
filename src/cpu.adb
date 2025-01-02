@@ -20,7 +20,7 @@ package body CPU is
       Overflow_Flag     := False;
       Negative_Flag     := False;
 
-      Total_Cycles_Elapsed := 0;
+      Total_Cycles_Elapsed := 7;
    end Power_On;
 
    procedure Reset is
@@ -34,41 +34,6 @@ package body CPU is
 
    -----------------------------------------------------------------------------
 
-   procedure Print_State is
-   begin
-      U8_IO.Default_Base  := 16;
-      U16_IO.Default_Base := 16;
-
-      Put ("PC: ");
-      U16_IO.Put (Program_Counter);
-
-      Put (" | SP: ");
-      U8_IO.Put (Stack_Pointer);
-
-      Put ("| A: ");
-      U8_IO.Put (Accumulator);
-
-      Put (" | X: ");
-      U8_IO.Put (Index_Register_X);
-
-      Put (" | Y: ");
-      U8_IO.Put (Index_Register_Y);
-      New_Line;
-
-      Put ("CF:" & Boolean'Pos (Carry_Flag)'Image);
-      Put (" | ZF:" & Boolean'Pos (Zero_Flag)'Image);
-      Put (" | ID:" & Boolean'Pos (Interrupt_Disable)'Image);
-      Put (" | DM:" & Boolean'Pos (Decimal_Mode)'Image);
-      Put (" | BC:" & Boolean'Pos (Break_Command)'Image);
-      Put (" | OF:" & Boolean'Pos (Overflow_Flag)'Image);
-      Put (" | NF:" & Boolean'Pos (Negative_Flag)'Image);
-      New_Line;
-
-      Put_Line ("Total Cycles Elapsed: " & Total_Cycles_Elapsed'Image);
-   end Print_State;
-
-   -----------------------------------------------------------------------------
-
    function Negative (Value : U8) return Boolean is
    begin
       return (Value and Negative_Flag_Bit) /= 0;
@@ -79,36 +44,60 @@ package body CPU is
       return (Value and Overflow_Flag_Bit) /= 0;
    end Overflow;
 
+   -----------------------------------------------------------------------------
+
+   procedure Print_Stack is
+   begin
+      Put_Line ("+-------");
+      for Address in (Stack_Top + U16 (Stack_Pointer)) .. Stack_Base loop
+         Put ("|");
+         U16_IO.Put (Address, Base => 16);
+         Put (": ");
+         U8_IO.Put (Read (Address), Base => 16);
+         New_Line;
+      end loop;
+      Put_Line ("+-------");
+   end Print_Stack;
+
    procedure Push8 (Value : U8) is
    begin
+      if Stack_Pointer = 0 then
+         raise Stack_Overflow;
+      end if;
+
+      Write (Stack_Top + U16 (Stack_Pointer), Value);
       Stack_Pointer := Stack_Pointer - 1;
-      Write(Stack_Top + U16 (Stack_Pointer), Value);
    end Push8;
 
    procedure Push16 (Value : U16) is
+      High, Low : U8;
    begin
-      Stack_Pointer := Stack_Pointer - 2;
+      High := U8 (Shift_Right (Value, 8));
+      Low  := U8 (Value and 16#00FF#);
 
-      Write ((Stack_Top + U16 (Stack_Pointer) + 0), U8 (Shift_Right (Value, 8) and 16#00FF#));
-      Write ((Stack_Top + U16 (Stack_Pointer) + 1), U8 (Shift_Right (Value, 0) and 16#00FF#));
+      Push8 (High);
+      Push8 (Low);
    end Push16;
 
    function Pop8 return U8 is
       Result : U8;
    begin
-      Result := Read (Stack_Base - U16 (Stack_Pointer));
+      if Stack_Pointer = 16#FD# then
+         raise Stack_Underflow;
+      end if;
 
       Stack_Pointer := Stack_Pointer + 1;
+      Result := Read (Stack_Top + U16 (Stack_Pointer));
+
       return Result;
    end Pop8;
 
    function Pop16 return U16 is
       High, Low : U8;
    begin
-      Low  := Read (Stack_Base - U16 (Stack_Pointer + 0));
-      High := Read (Stack_Base - U16 (Stack_Pointer + 1));
+      Low  := Pop8;
+      High := Pop8;
 
-      Stack_Pointer := Stack_Pointer + 2;
       return Merge (High => High, Low => Low);
    end Pop16;
 
@@ -164,7 +153,7 @@ package body CPU is
    function Indirect return U16 is
       Base : U16;
    begin
-      Base := Merge (Low  => Read (Program_Counter + 1),
+      Base := Merge (Low => Read (Program_Counter + 1),
                      High => Read (Program_Counter + 2));
 
       return Merge (Low  => Read (Base + 0),
@@ -197,7 +186,28 @@ package body CPU is
 
       Data1, Data2 : U8 := 0;
 
-      -------------------------------------------------------------------------
+      Jump_Occurred        : Boolean := False;
+      Next_Program_Counter : U16     := Program_Counter;
+
+      function Read (Address : U16) return U8 is
+      begin
+         if (Address and 16#FF#) = 16#FF# then
+            Cycles := Cycles + Instructions (Instruction).Page_Cross_Penalty;
+         end if;
+
+         return Memory.Read (Address);
+      end Read;
+
+      procedure Write (Address : U16; Value : U8) is
+      begin
+         if (Address and 16#FF#) = 16#FF# then
+            Cycles := Cycles + Instructions (Instruction).Page_Cross_Penalty;
+         end if;
+
+         Memory.Write (Address, Value);
+      end Write;
+
+      -----------------------------------------------------------------------
       procedure NOP is
       begin
          null;
@@ -406,7 +416,7 @@ package body CPU is
       procedure BIT (Value : U8) is
          Result : U8;
       begin
-         Result := Accumulator xor Value;
+         Result := Accumulator and Value;
 
          Zero_Flag     := (Result = 0);
          Overflow_Flag := Overflow (Result);
@@ -469,7 +479,7 @@ package body CPU is
       begin
          C := (if Carry_Flag then 2#0000_0001# else 2#0000_0000#);
 
-         Previous := Accumulator;
+         Previous    := Accumulator;
          Accumulator := Shift_Left (Previous, 1) or C;
 
          Carry_Flag    := (Previous and 2#1000_0000#) /= 0;
@@ -497,7 +507,7 @@ package body CPU is
       begin
          C := (if Carry_Flag then 2#1000_0000# else 2#0000_0000#);
 
-         Previous := Accumulator;
+         Previous    := Accumulator;
          Accumulator := Shift_Right (Previous, 1) or C;
 
          Carry_Flag    := (Previous and 2#0000_0001#) /= 0;
@@ -555,15 +565,16 @@ package body CPU is
 
       procedure Branch (Offset : U8) is
          Signed_Offset : S8;
-         Signed_Result : S16;
+         Signed_Result : S32;
       begin
          Signed_Offset := S8'Val (Offset);
-         Signed_Result := S16'Val (Program_Counter) + 2 + S16 (Signed_Offset);
+         Signed_Result := S32'Val (Program_Counter) + 2 + S32 (Signed_Offset);
 
-         Program_Counter := U16'Val (Signed_Result);
+         Jump_Occurred   := True;
+         Next_Program_Counter := U16'Val (Signed_Result);
 
          -- NOTE: Branches that are taken consume an extra cycle.
-         Bytes := Bytes + 1;
+         Cycles := Cycles + 1;
       end Branch;
 
       procedure BCC (Offset : U8) is
@@ -626,13 +637,16 @@ package body CPU is
 
       procedure JMP (Address : U16) is
       begin
-         Program_Counter := Address;
+         Jump_Occurred        := True;
+         Next_Program_Counter := Address;
       end JMP;
 
       procedure JSR (Address : U16) is
       begin
          Push16 (Program_Counter + 2);
-         Program_Counter := Address;
+
+         Jump_Occurred        := True;
+         Next_Program_Counter := Address;
       end JSR;
 
       procedure BRK is
@@ -642,7 +656,8 @@ package body CPU is
 
       procedure RTS is
       begin
-         Program_Counter := Pop16 + 1;
+         Jump_Occurred        := True;
+         Next_Program_Counter := Pop16 + 1;
       end RTS;
 
       procedure RTI is
@@ -657,7 +672,8 @@ package body CPU is
          Overflow_Flag     := (Flags and Overflow_Flag_Bit) /= 0;
          Negative_Flag     := (Flags and Negative_Flag_Bit) /= 0;
 
-         Program_Counter := Pop16;
+         Jump_Occurred        := True;
+         Next_Program_Counter := Pop16;
       end RTI;
 
       -----------------------------------------------------------------
@@ -742,30 +758,78 @@ package body CPU is
 
       ---------------------------------------------------------------
 
-      procedure Print_Instruction is
+      procedure Print_State is
+         TAB : Character := Character'Val (9);
       begin
-         Put (String (Instructions (Instruction).Symbol) & " (");
-         U8_IO.Put (Instruction, Base => 16);
-         Put (")");
-         New_Line;
+         Put_Hex (Program_Counter);
+         Put ("  ");
 
-         Put_Line ("   Cycles      : " & Cycles'Image);
-         Put_Line ("   Bytes       : " & Bytes'Image);
+         Put_Hex (Instruction);
+         Put (" ");
 
          if Bytes > 1 then
-            Put ("   Data Byte 1 : ");
-            U8_IO.Put (Read (Program_Counter + 1), Base => 16);
-            New_Line;
+            Put_Hex (Read (Program_Counter + 1));
+         else
+            Put ("  ");
          end if;
+         Put (" ");
 
          if Bytes > 2 then
-            Put ("   Data Byte 2 : ");
-            U8_IO.Put (Read (Program_Counter + 2), Base => 16);
-            New_Line;
+            Put_Hex (Read (Program_Counter + 2));
+         else
+            Put ("  ");
          end if;
+         Put (" ");
+         Put (TAB);
+
+         -- TODO: This does not take addressing modes into account, it just
+         -- displays the follow-up bytes verbatim.
+         Put (String (Instructions (Instruction).Symbol));
+         if Bytes = 2 then
+            Put (" $");
+            Put_Hex (Read (Program_Counter + 1));
+            Put ("  ");
+         elsif Bytes = 3 then
+            Put (" $");
+            Put_Hex (Read (Program_Counter + 2));
+            Put_Hex (Read (Program_Counter + 1));
+         else
+            Put ("      ");
+         end if;
+         Put ("                      ");
+
+         Put (" A:");
+         Put_Hex (Accumulator);
+
+         Put (" X:");
+         Put_Hex (Index_Register_X);
+
+         Put (" Y:");
+         Put_Hex (Index_Register_Y);
+
+         Put (" P:");
+         Put_Hex (U8(16#00#));
+
+         Put (" SP:");
+         Put_Hex (Stack_Pointer);
+
+         Put (" PPU:  0,  0");
+
+         Put (" CYC:" & Total_Cycles_Elapsed'Image);
+         for I in 1 .. 15 - Total_Cycles_Elapsed'Image'Length loop
+            Put (" ");
+         end loop;
+
+         Put ("CF:" & Boolean'Pos (Carry_Flag)'Image);
+         Put (" ZF:" & Boolean'Pos (Zero_Flag)'Image);
+         Put (" ID:" & Boolean'Pos (Interrupt_Disable)'Image);
+         Put (" DM:" & Boolean'Pos (Decimal_Mode)'Image);
+         Put (" BC:" & Boolean'Pos (Break_Command)'Image);
+         Put (" OF:" & Boolean'Pos (Overflow_Flag)'Image);
+         Put (" NF:" & Boolean'Pos (Negative_Flag)'Image);
 
          New_Line;
-      end Print_Instruction;
+      end Print_State;
 
       --------------------------------------------------------------------------
    begin
@@ -776,6 +840,8 @@ package body CPU is
 
       Cycles := Instructions (Instruction).Cycles;
       Bytes  := Instructions (Instruction).Bytes;
+
+      Print_State;
 
       case Instruction is
          when 16#EA# =>NOP;
@@ -961,11 +1027,18 @@ package body CPU is
 
       Total_Cycles_Elapsed := Total_Cycles_Elapsed + Cycles;
 
-      Put_Line ("-----------------------------------------");
-      Print_Instruction;
-      Print_State;
+      if Jump_Occurred then
+         Program_Counter := Next_Program_Counter;
+      else
+         Program_Counter := Program_Counter + U16 (Bytes);
+      end if;
 
-      Program_Counter := Program_Counter + U16 (Bytes);
+   exception
+      when E : others =>
+         Put_Line (Exception_Information (E));
+         Put_Line ("CPU state at failure:");
+         Print_State;
+         Break_Command := True;
    end Decode_And_Execute;
 
 end CPU;

@@ -14,6 +14,8 @@ package Memory is
    Stack_Base : constant U16 := 16#01FF#;
    Stack_Top  : constant U16 := 16#0100#;
 
+   Stack_Overflow, Stack_Underflow : exception;
+
    function Read (Address : U16) return U8;
    procedure Write (Address : U16; Value : U8);
    function Merge (Low, High : U8) return U16;
