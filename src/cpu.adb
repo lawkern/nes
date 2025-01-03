@@ -87,7 +87,7 @@ package body CPU is
       end if;
 
       Stack_Pointer := Stack_Pointer + 1;
-      Result := Read (Stack_Top + U16 (Stack_Pointer));
+      Result        := Read (Stack_Top + U16 (Stack_Pointer));
 
       return Result;
    end Pop8;
@@ -153,7 +153,7 @@ package body CPU is
    function Indirect return U16 is
       Address1, Address2 : U16;
    begin
-      Address1 := Merge (Low  => Read (Program_Counter + 1),
+      Address1 := Merge (Low => Read (Program_Counter + 1),
                          High => Read (Program_Counter + 2));
 
       -- NOTE: Due to a bug in the 6502 CPU, if the provided address crosses a
@@ -171,10 +171,10 @@ package body CPU is
    end Indirect;
 
    function Indirect_X return U16 is
-      Base : U16;
+      Base : U8;
    begin
-      Base := U16 (Read (Program_Counter + 1)) + U16 (Index_Register_X);
-      return Merge (Low => Read (Base + 0), High => Read (Base + 1));
+      Base := Read (Program_Counter + 1) + Index_Register_X;
+      return Merge (Low => Read (U16 (Base + 0)), High => Read (U16 (Base + 1)));
    end Indirect_X;
 
    function Indirect_Y return U16 is
@@ -197,25 +197,8 @@ package body CPU is
       Data1, Data2 : U8 := 0;
 
       Jump_Occurred        : Boolean := False;
+      Page_Crossed         : Boolean := False;
       Next_Program_Counter : U16     := Program_Counter;
-
-      function Read (Address : U16) return U8 is
-      begin
-         if (Address and 16#FF#) = 16#FF# then
-            Cycles := Cycles + Instructions (Instruction).Page_Cross_Penalty;
-         end if;
-
-         return Memory.Read (Address);
-      end Read;
-
-      procedure Write (Address : U16; Value : U8) is
-      begin
-         if (Address and 16#FF#) = 16#FF# then
-            Cycles := Cycles + Instructions (Instruction).Page_Cross_Penalty;
-         end if;
-
-         Memory.Write (Address, Value);
-      end Write;
 
       -----------------------------------------------------------------------
       procedure NOP is
@@ -314,7 +297,7 @@ package body CPU is
 
       procedure ADC (Value : U8) is
          Result16 : U16;
-         Result : U8;
+         Result   : U8;
       begin
          Result16 := U16 (Accumulator) + U16 (Value);
          if Carry_Flag then
@@ -331,7 +314,7 @@ package body CPU is
       end ADC;
 
       procedure SBC (Value : U8) is
-         Result   : U8;
+         Result : U8;
       begin
          Result := Accumulator + (not Value);
          if Carry_Flag then
@@ -581,7 +564,7 @@ package body CPU is
          Signed_Offset := S8'Val (Offset);
          Signed_Result := S32'Val (Program_Counter) + 2 + S32 (Signed_Offset);
 
-         Jump_Occurred   := True;
+         Jump_Occurred        := True;
          Next_Program_Counter := U16'Val (Signed_Result);
 
          -- NOTE: Branches that are taken consume an extra cycle.
@@ -769,8 +752,12 @@ package body CPU is
 
       ---------------------------------------------------------------
 
-      procedure Print_State (Display_Flags : Boolean := True) is
+      procedure Print_State is
          TAB : Character := Character'Val (9);
+
+         Display_Asm       : Boolean := True;
+         Display_Registers : Boolean := True;
+         Display_Flags     : Boolean := True;
       begin
          Put_Hex (Program_Counter);
          Put ("  ");
@@ -793,41 +780,46 @@ package body CPU is
          Put (" ");
          Put (TAB);
 
-         -- TODO: This does not take addressing modes into account, it just
-         -- displays the follow-up bytes verbatim.
-         Put (String (Instructions (Instruction).Symbol));
-         if Bytes = 2 then
-            Put (" $");
-            Put_Hex (Read (Program_Counter + 1));
-            Put ("  ");
-         elsif Bytes = 3 then
-            Put (" $");
-            Put_Hex (Read (Program_Counter + 2));
-            Put_Hex (Read (Program_Counter + 1));
-         else
-            Put ("      ");
+         if Display_Asm then
+            -- TODO: This does not take addressing modes into account, it just
+            -- displays the follow-up bytes verbatim.
+            Put (String (Instructions (Instruction).Symbol));
+            if Bytes = 2 then
+               Put (" $");
+               Put_Hex (Read (Program_Counter + 1));
+               Put ("  ");
+            elsif Bytes = 3 then
+               Put (" $");
+               Put_Hex (Read (Program_Counter + 2));
+               Put_Hex (Read (Program_Counter + 1));
+            else
+               Put ("      ");
+            end if;
          end if;
-         Put ("                      ");
 
-         Put (" A:");
-         Put_Hex (Accumulator);
+         if Display_Registers then
+            Put ("                      ");
 
-         Put (" X:");
-         Put_Hex (Index_Register_X);
+            Put (" A:");
+            Put_Hex (Accumulator);
 
-         Put (" Y:");
-         Put_Hex (Index_Register_Y);
+            Put (" X:");
+            Put_Hex (Index_Register_X);
 
-         Put (" P:");
-         Put_Hex (U8(16#00#));
+            Put (" Y:");
+            Put_Hex (Index_Register_Y);
 
-         Put (" SP:");
-         Put_Hex (Stack_Pointer);
+            Put (" P:");
+            Put_Hex (U8 (16#00#));
 
-         Put (" PPU:  0,  0");
+            Put (" SP:");
+            Put_Hex (Stack_Pointer);
 
-         Put (" CYC:");
-         Put (Total_Cycles_Elapsed'Image);
+            Put (" PPU:  0,  0");
+
+            Put (" CYC:");
+            Put (Total_Cycles_Elapsed'Image);
+         end if;
 
          if Display_Flags then
             for I in 1 .. 15 - Total_Cycles_Elapsed'Image'Length loop
@@ -1040,6 +1032,10 @@ package body CPU is
          when others =>raise Unimplemented_Instruction;
       end case;
 
+      Page_Crossed := (Program_Counter and 16#FF00#) /= (Next_Program_Counter and 16#FF00#);
+      if Jump_Occurred and Page_Crossed then
+         Cycles := Cycles + Instructions (Instruction).Page_Cross_Penalty;
+      end if;
       Total_Cycles_Elapsed := Total_Cycles_Elapsed + Cycles;
 
       if Jump_Occurred then
