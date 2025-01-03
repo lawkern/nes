@@ -6,7 +6,6 @@ with Ada.Text_IO;    use Ada.Text_IO;
 with Ada.Exceptions; use Ada.Exceptions;
 
 with Shared; use Shared;
-with Memory; use Memory;
 
 package CPU is
 
@@ -42,8 +41,23 @@ package CPU is
    Overflow_Flag_Mask     : constant U8 := not Overflow_Flag_Bit;
    Negative_Flag_Mask     : constant U8 := not Negative_Flag_Bit;
 
-   Total_Cycles_Elapsed : Natural := 0;
 
+   -- NOTE: CPU memory.
+   type Address_Space is array (U16) of U8;
+   Memory : Address_Space;
+
+   -- NOTE: The 256-byte stack grows downward from 01FF to 0100, indexed by the
+   -- 8-bit Stack_Pointer register.
+   Stack_Base : constant U16 := 16#01FF#;
+   Stack_Top  : constant U16 := 16#0100#;
+
+   Stack_Overflow, Stack_Underflow : exception;
+
+   function Read (Address : U16) return U8;
+   procedure Write (Address : U16; Value : U8);
+
+
+   -- NOTE: CPU instructions.
    type Instruction_String is new String (1 .. 3);
    type Instruction_Info is record
       Symbol             : Instruction_String;
@@ -51,7 +65,7 @@ package CPU is
       Page_Cross_Penalty : Natural := 0;
    end record;
 
-   -- Official instructions to implement:
+   -- Official instructions:
    -- -----------------------------------
    -- DONE: Access     LDA   STA   LDX   STX   LDY   STY
    -- DONE: Transfer   TAX   TXA   TAY   TYA
@@ -257,6 +271,8 @@ package CPU is
       16#B8# => ("CLV", Bytes => 1, Cycles => 2, Page_Cross_Penalty => 0),
 
       others => ("???", Bytes => 1, Cycles => 0, Page_Cross_Penalty => 0));
+
+   Total_Cycles_Elapsed : Natural := 0;
 
    procedure Power_On;
    procedure Reset;

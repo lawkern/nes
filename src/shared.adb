@@ -6,6 +6,21 @@ with Ada.Strings.Fixed;
 
 package body Shared is
 
+   function Merge (Low, High : U8) return U16 is
+   begin
+      return Shift_Left (U16 (High), 8) + U16 (Low);
+   end Merge;
+
+   function Kilobytes (N : Natural) return Natural is
+   begin
+      return 1_024 * N;
+   end Kilobytes;
+
+   function Megabytes (N : Natural) return Natural is
+   begin
+      return 1_024 * Kilobytes (N);
+   end Megabytes;
+
    -- NOTE: This manually takes the substring of hex digits from an Ada-format
    -- 16#...# hex literal. This is just for debug output so we probably don't
    -- care, but maybe Ada has a smarter way to do this. It seems pretty silly

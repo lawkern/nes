@@ -73,8 +73,8 @@ package body Cartridge is
 
          for Offset in 0 .. PRG_ROM_Size - 1 loop
             Read (Content_File, Value);
-            Memory.Map (Memory_Base1 + U16 (Offset)) := Value;
-            Memory.Map (Memory_Base2 + U16 (Offset)) := Value;
+            CPU.Memory (Memory_Base1 + U16 (Offset)) := Value;
+            CPU.Memory (Memory_Base2 + U16 (Offset)) := Value;
          end loop;
       end;
       Content_IO.Close (Content_File);

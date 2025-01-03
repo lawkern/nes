@@ -32,7 +32,29 @@ package body CPU is
       Total_Cycles_Elapsed := 0;
    end Reset;
 
-   -----------------------------------------------------------------------------
+   ---------------------------------------------------------------------------
+
+   function Read (Address : U16) return U8 is
+      Actual_Address : U16 := Address;
+   begin
+      if Address >= 16#1000# and Address <= 16#2000# then
+         Actual_Address := Address - 16#1000#;
+      end if;
+
+      return CPU.Memory (Actual_Address);
+   end Read;
+
+   procedure Write (Address : U16; Value : U8) is
+      Actual_Address : U16 := Address;
+   begin
+      if Address >= 16#1000# and Address <= 16#2000# then
+         Actual_Address := Address - 16#1000#;
+      end if;
+
+      CPU.Memory (Actual_Address) := Value;
+   end Write;
+
+   ---------------------------------------------------------------------------
 
    function Negative (Value : U8) return Boolean is
    begin

@@ -19,6 +19,11 @@ package Shared is
    package U8_IO is new Ada.Text_IO.Modular_IO (U8);
    package U16_IO is new Ada.Text_IO.Modular_IO (U16);
 
+   function Merge (Low, High : U8) return U16;
+
+   function Kilobytes (N : Natural) return Natural;
+   function Megabytes (N : Natural) return Natural;
+
    procedure Put_Hex (Value : U8; Width : Positive := 2);
    procedure Put_Hex (Value : U16; Width : Positive := 4);
 end Shared;

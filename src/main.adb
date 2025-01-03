@@ -7,7 +7,6 @@ with Ada.Command_Line; use Ada.Command_Line;
 
 with Shared;    use Shared;
 with CPU;       use CPU;
-with Memory;    use Memory;
 with Cartridge; use Cartridge;
 
 procedure Main is
@@ -35,7 +34,7 @@ begin
       Cartridge.Load (Argument (1));
    else
       for Index in Program'Range loop
-         Memory.Write (CPU.Program_Counter + U16 (Index), Program (Index));
+         CPU.Write (CPU.Program_Counter + U16 (Index), Program (Index));
       end loop;
    end if;
 

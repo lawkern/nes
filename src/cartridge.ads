@@ -9,7 +9,6 @@ with Ada.Direct_IO;
 
 with Shared; use Shared;
 with CPU;    use CPU;
-with Memory; use Memory;
 
 package Cartridge is
    type Cartridge_Identifer is array (1 .. 4) of Character;

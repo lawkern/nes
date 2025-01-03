@@ -3,3 +3,6 @@ compile:
 
 run:
 	./build/nes $(ROM)
+
+generate:
+	@./build/nes $(ROM) > ./misc/generated.log
