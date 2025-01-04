@@ -10,7 +10,12 @@ package body CPU is
       Index_Register_X := 0;
       Index_Register_Y := 0;
 
-      Program_Counter := 16#FFFC#;
+      Program_Counter := Merge (Low => Read (16#FFFC#), High => Read (16#FFFD#));
+
+      -- NOTE: While testing with nestest.nes the Program Counter must be set to
+      -- $C000 to bypass the reset vector
+      Program_Counter := 16#C000#;
+
       Stack_Pointer   := 16#FD#;
 
       Carry_Flag        := False;
@@ -798,6 +803,7 @@ package body CPU is
          Display_Registers : Boolean := True;
          Display_Flags     : Boolean := True;
       begin
+         Put ("| ");
          Put_Hex (Program_Counter);
          Put ("  ");
 

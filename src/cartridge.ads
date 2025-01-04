@@ -41,4 +41,5 @@ package Cartridge is
    Invalid_Format : exception;
 
    procedure Load (Path : String);
+   procedure Load_Test_Program;
 end Cartridge;

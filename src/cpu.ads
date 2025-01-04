@@ -59,6 +59,8 @@ package CPU is
 
 
    -- NOTE: CPU instructions.
+   type Instruction_Stream is array (Natural range <>) of U8;
+
    type Instruction_String is new String (1 .. 3);
    type Instruction_Info is record
       Symbol             : Instruction_String;

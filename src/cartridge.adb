@@ -80,4 +80,28 @@ package body Cartridge is
       Content_IO.Close (Content_File);
    end Load;
 
+   procedure Load_Test_Program is
+      Low   : constant U8  := 16#00#;
+      High  : constant U8  := 16#C0#;
+      Start : constant U16 := Merge (Low => Low, High => High);
+
+      Program : constant Instruction_Stream :=
+        (16#A9#, 16#12#, -- LDA 0x12
+         16#A9#, 16#00#, -- LDA 0x00
+         16#A9#, 16#34#, -- LDA 0x34
+         16#A9#, 16#FF#, -- LDA 0xFF
+         16#EA#,         -- NOP
+         16#EA#,         -- NOP
+         16#EA#,         -- NOP
+         16#00#,         -- BRK
+         16#EA#);        -- NOP
+   begin
+      CPU.Write (16#FFFC#, Low);
+      CPU.Write (16#FFFD#, High);
+
+      for Index in Program'Range loop
+         CPU.Write (Start + U16 (Index), Program (Index));
+      end loop;
+   end Load_Test_Program;
+
 end Cartridge;
