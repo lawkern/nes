@@ -6,6 +6,7 @@ with Ada.Text_IO;    use Ada.Text_IO;
 with Ada.Exceptions; use Ada.Exceptions;
 
 with Shared; use Shared;
+with PPU;    use PPU;
 
 package CPU is
 

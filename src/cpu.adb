@@ -34,24 +34,36 @@ package body CPU is
 
    ---------------------------------------------------------------------------
 
-   function Read (Address : U16) return U8 is
-      Actual_Address : U16 := Address;
+   function Translate (Address : U16) return U16 is
+      Result : U16;
    begin
-      if Address >= 16#1000# and Address <= 16#2000# then
-         Actual_Address := Address - 16#1000#;
-      end if;
+      case Address is
+         when 16#1000# .. 16#1FFF# =>
+            Result := Address - 16#1000#;
+         when PPU.Register_Address'Range =>
+            Result := PPU.Register_Address'First + (Address and 2#0111#);
+         when others =>
+            Result := Address;
+      end case;
 
-      return CPU.Memory (Actual_Address);
+      return Result;
+   end Translate;
+
+   function Read (Address : U16) return U8 is
+   begin
+      return CPU.Memory (Translate (Address));
    end Read;
 
    procedure Write (Address : U16; Value : U8) is
-      Actual_Address : U16 := Address;
+      Translated_Address : U16;
    begin
-      if Address >= 16#1000# and Address <= 16#2000# then
-         Actual_Address := Address - 16#1000#;
-      end if;
+      Translated_Address := Translate (Address);
 
-      CPU.Memory (Actual_Address) := Value;
+      CPU.Memory (Translated_Address) := Value;
+
+      if Address >= PPU.Register_Address'First and Address <= PPU.Register_Address'Last then
+         PPU.Write_Register (Address, Value);
+      end if;
    end Write;
 
    ---------------------------------------------------------------------------
@@ -69,16 +81,21 @@ package body CPU is
    -----------------------------------------------------------------------------
 
    procedure Print_Stack is
+   Top : U16 := Stack_Top + U16 (Stack_Pointer);
    begin
-      Put_Line ("+-------");
-      for Address in (Stack_Top + U16 (Stack_Pointer)) .. Stack_Base loop
+      Put_Line ("+--------");
+      Put ("|");
+      Put_Hex (Top);
+      Put_Line (": ?? <- SP + Top");
+
+      for Address in (Top + 1) .. Stack_Base loop
          Put ("|");
-         U16_IO.Put (Address, Base => 16);
+         Put_Hex (Address);
          Put (": ");
-         U8_IO.Put (Read (Address), Base => 16);
+         Put_Hex (Read (Address));
          New_Line;
       end loop;
-      Put_Line ("+-------");
+      Put_Line ("+--------");
    end Print_Stack;
 
    procedure Push8 (Value : U8) is
