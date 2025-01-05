@@ -16,6 +16,16 @@ package Shared is
    type S32 is new Integer_32;
    type S64 is new Integer_64;
 
+   subtype U14 is U16 range 0 .. 16#3FFF#;
+
+   type Pixel_Buffer is array (Natural range <>) of U32;
+   type Pixel_Access is access Pixel_Buffer;
+
+   type Texture is record
+      Width, Height : Integer;
+      Pixels        : Pixel_Access;
+   end record;
+
    package U8_IO is new Ada.Text_IO.Modular_IO (U8);
    package U16_IO is new Ada.Text_IO.Modular_IO (U16);
 

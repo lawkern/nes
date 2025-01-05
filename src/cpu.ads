@@ -10,7 +10,7 @@ with PPU;    use PPU;
 
 package CPU is
 
-   -- NOTE: Registers.
+   -- NOTE: CPU Registers.
    Program_Counter  : U16;
    Stack_Pointer    : U8;
    Accumulator      : U8;

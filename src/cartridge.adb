@@ -61,7 +61,8 @@ package body Cartridge is
          Use_Trainer_Area : Boolean := (Header.Flags6 and 2#0000_0100#) /= 0;
          PRG_Index        : Content_IO.Positive_Count := 1 + 16;
 
-         Value        : U8;
+         Value : U8;
+
          Memory_Base1 : U16 := 16#8000#;
          Memory_Base2 : U16 := 16#C000#;
       begin
@@ -73,13 +74,19 @@ package body Cartridge is
 
          for Offset in 0 .. PRG_ROM_Size - 1 loop
             Read (Content_File, Value);
-            CPU.Memory (Memory_Base1 + U16 (Offset)) := Value;
-            CPU.Memory (Memory_Base2 + U16 (Offset)) := Value;
+            CPU.Write (Memory_Base1 + U16 (Offset), Value);
+            CPU.Write (Memory_Base2 + U16 (Offset), Value);
+         end loop;
+
+         for Address in 0 .. CHR_ROM_Size - 1 loop
+            Read (Content_File, Value);
+            PPU.Write (U14 (Address), Value);
          end loop;
       end;
       Content_IO.Close (Content_File);
    end Load;
 
+   -----------------------------------------------------------------------------
    procedure Load_Test_Program is
       Low   : constant U8  := 16#00#;
       High  : constant U8  := 16#C0#;

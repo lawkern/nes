@@ -893,7 +893,7 @@ package body CPU is
       Cycles := Instructions (Instruction).Cycles;
       Bytes  := Instructions (Instruction).Bytes;
 
-      Print_State;
+      -- Print_State;
 
       case Instruction is
          when 16#EA# =>NOP;
