@@ -29,8 +29,8 @@ package body Platform is
 
    ----------------------------------------------------------------------------
    procedure Initialize (Width, Height : Integer; Title : String) is
-      Window_Width  : Integer           := Width;
-      Window_Height : Integer           := Height;
+      Window_Width  : Integer           := Width * 2;
+      Window_Height : Integer           := Height * 2;
       Window_Flags  : SDL3.Window_Flags := 0;
 
       Use_High_DPI : Boolean := False;
@@ -89,6 +89,17 @@ package body Platform is
                         when Keycode_Escape =>
                            Running := False;
                            exit;
+
+                        when Keycode_Return =>
+                           if Pressed then
+                              declare
+                                 Currently_Fullscreen : Boolean;
+                              begin
+                                 Currently_Fullscreen := (SDL3.Get_Window_Flags (Window) and SDL3.Window_Fullscreen) /= 0;
+                                 SDL3.Set_Window_Fullscreen (Window, not Currently_Fullscreen);
+                              end;
+                           end if;
+
                         when others =>
                            null;
                      end case;

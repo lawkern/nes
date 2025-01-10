@@ -57,6 +57,15 @@ package body SDL3 is
       end if;
    end Get_Window_Size;
 
+   procedure Set_Window_Fullscreen (Window : SDL3.Window; Fullscreen : Boolean) is
+      function SDL_Set_Window_Fullscreen (Window : SDL3.Window; Fullscreen : C.C_bool) return C.C_bool
+        with Import => True, Convention => C, External_Name => "SDL_SetWindowFullscreen";
+   begin
+      if SDL_Set_Window_Fullscreen (Window, C.C_bool(Fullscreen)) /= C.True then
+         raise Initialization_Error;
+      end if;
+   end Set_Window_Fullscreen;
+
    -------------------------------------------------------------------------
    function Get_System_Theme return System_Theme is
       function SDL_Get_System_Theme return Uint32

@@ -69,7 +69,11 @@ package SDL3 is
       Window   : out SDL3.Window;
       Renderer : out SDL3.Renderer);
 
+   function Get_Window_Flags (Window : SDL3.Window) return Window_Flags
+      with Import => True, Convention => C, External_Name => "SDL_GetWindowFlags";
+
    procedure Get_Window_Size (Window : SDL3.Window; Width, Height : out Integer);
+   procedure Set_Window_Fullscreen(Window : SDL3.Window; Fullscreen : Boolean);
 
    type System_Theme is (System_Theme_Unknown, System_Theme_Dark, System_Theme_Light);
    function Get_System_Theme return System_Theme;
