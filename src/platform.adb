@@ -54,6 +54,7 @@ package body Platform is
       SDL3.Set_Render_V_Sync (Renderer, 1);
 
       Texture := SDL3.Create_Texture (Renderer, Width, Height);
+      SDL3.Set_Texture_Scale_Mode (Texture, Scale_Mode_Nearest);
 
       Frames_Per_Second  := 60;
       Frame_Time_Elapsed := Microseconds (1_000_000) / Frames_Per_Second;
@@ -116,12 +117,11 @@ package body Platform is
       Src_Rect, Dst_Rect : SDL3.FRect;
       Pitch : Integer := Backbuffer.Width * Backbuffer.Pixels'Component_Size / 8;
    begin
-      Src_Rect := (X => 0.0, Y => 0.0, W => Float (Backbuffer.Width), H => Float (Backbuffer.Height));
-
-      SDL3.Get_Window_Size (Window, Integer (Dst_Rect.W), Integer (Dst_Rect.H));
-
       SDL3.Set_Render_Draw_Color (Renderer, R => 32, G => 32, B => 64, A => 255);
       SDL3.Render_Clear (Renderer);
+
+      Src_Rect := (X => 0.0, Y => 0.0, W => Float (Backbuffer.Width), H => Float (Backbuffer.Height));
+      SDL3.Get_Window_Size (Window, Integer (Dst_Rect.W), Integer (Dst_Rect.H));
 
       SDL3.Update_Texture (Texture, Backbuffer.Pixels, Pitch);
       SDL3.Render_Texture (Renderer, Texture, Src_Rect => Src_Rect, Dst_Rect => Dst_Rect);

@@ -73,7 +73,24 @@ package SDL3 is
       with Import => True, Convention => C, External_Name => "SDL_GetWindowFlags";
 
    procedure Get_Window_Size (Window : SDL3.Window; Width, Height : out Integer);
-   procedure Set_Window_Fullscreen(Window : SDL3.Window; Fullscreen : Boolean);
+   procedure Set_Window_Fullscreen (Window : SDL3.Window; Fullscreen : Boolean);
+
+   type Renderer_Logical_Presentation is
+     (Logical_Presentation_Disabled,
+      Logical_Presentation_Stretch,
+      Logical_Presentation_Letterbox,
+      Logical_Presentation_Overscan,
+      Logical_Presentation_Integer_Scale);
+
+   for Renderer_Logical_Presentation use
+     (Logical_Presentation_Disabled      => 0,
+      Logical_Presentation_Stretch       => 1,
+      Logical_Presentation_Letterbox     => 2,
+      Logical_Presentation_Overscan      => 3,
+      Logical_Presentation_Integer_Scale => 4);
+
+   procedure Set_Render_Logical_Presentation
+     (Renderer : SDL3.Renderer; W, H : Integer; Mode : Renderer_Logical_Presentation);
 
    type System_Theme is (System_Theme_Unknown, System_Theme_Dark, System_Theme_Light);
    function Get_System_Theme return System_Theme;
@@ -172,5 +189,10 @@ package SDL3 is
 
    procedure Render_Texture
      (Renderer : SDL3.Renderer; Texture : SDL3.Texture; Src_Rect, Dst_Rect : in out FRect);
+
+   type Scale_Mode is (Scale_Mode_Nearest, Scale_Mode_Linear);
+   for Scale_Mode use (Scale_Mode_Nearest => 0, Scale_Mode_Linear => 1);
+
+   procedure Set_Texture_Scale_Mode (Texture : SDL3.Texture; Mode : Scale_Mode);
 
 end SDL3;

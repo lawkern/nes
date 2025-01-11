@@ -61,10 +61,30 @@ package body SDL3 is
       function SDL_Set_Window_Fullscreen (Window : SDL3.Window; Fullscreen : C.C_bool) return C.C_bool
         with Import => True, Convention => C, External_Name => "SDL_SetWindowFullscreen";
    begin
-      if SDL_Set_Window_Fullscreen (Window, C.C_bool(Fullscreen)) /= C.True then
+      if SDL_Set_Window_Fullscreen (Window, C.C_bool (Fullscreen)) /= C.True then
          raise Initialization_Error;
       end if;
    end Set_Window_Fullscreen;
+
+   ------------------------------------------------------------------------
+   procedure Set_Render_Logical_Presentation
+     (Renderer : SDL3.Renderer; W, H : Integer; Mode : Renderer_Logical_Presentation) is
+
+      -- TODO: Is there a portable way to determine the representation C will
+      -- choose for the Mode enum? Maybe we just don't care, since we know the
+      -- range is 0 to 4.
+
+      function SDL_Set_Render_Logical_Presentation
+        (Renderer : SDL3.Renderer; W, H : Integer; Mode : C.int) return C.C_bool
+        with Import => True, Convention => C, External_Name => "SDL_SetRenderLogicalPresentation";
+
+      C_Mode : C.int;
+   begin
+      C_Mode := C.int (Renderer_Logical_Presentation'Enum_Rep (Mode));
+      if SDL_Set_Render_Logical_Presentation (Renderer, W, H, C_Mode) /= C.True then
+         raise Initialization_Error;
+      end if;
+   end Set_Render_Logical_Presentation;
 
    -------------------------------------------------------------------------
    function Get_System_Theme return System_Theme is
@@ -183,5 +203,23 @@ package body SDL3 is
          null; -- TODO: Do we care if this fails?
       end if;
    end Render_Texture;
+
+   -------------------------------------------------------------------------
+   procedure Set_Texture_Scale_Mode (Texture : SDL3.Texture; Mode : Scale_Mode) is
+
+      -- TODO: Is there a portable way to determine the representation C will
+      -- choose for the Mode enum? Maybe we just don't care, since we know the
+      -- range is 0 to 1.
+
+      function SDL_Set_Texture_Scale_Mode (Texture : SDL3.Texture; Mode : C.int) return C.C_bool
+        with Import => True, Convention => C, External_Name => "SDL_SetTextureScaleMode";
+
+      C_Mode : C.int;
+   begin
+      C_Mode := C.int (Scale_Mode'Enum_Rep (Mode));
+      if SDL_Set_Texture_Scale_Mode (Texture, C_Mode) /= C.True then
+         raise Initialization_Error;
+      end if;
+   end Set_Texture_Scale_Mode;
 
 end SDL3;
