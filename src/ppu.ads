@@ -33,6 +33,7 @@ package PPU is
    function Read (Address : U14) return U8;
    procedure Write (Address : U14; Value : U8);
 
+   procedure Render_Clear (Backbuffer : Texture; Color : U32);
    procedure Render_Pattern_Table(Backbuffer : Texture);
 
 end PPU;

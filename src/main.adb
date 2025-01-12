@@ -43,6 +43,7 @@ begin
    while Platform.Running loop
       Platform.Process_Input;
 
+      PPU.Render_Clear (Backbuffer, 16#0000_00FF#);
       PPU.Render_Pattern_Table (Backbuffer);
 
       Platform.Render;

@@ -189,17 +189,15 @@ package body SDL3 is
 
    ----------------------------------------------------------------------------
    procedure Render_Texture
-     (Renderer           :        SDL3.Renderer;
-      Texture            :        SDL3.Texture;
-      Src_Rect, Dst_Rect : in out FRect) is
-
+     (Renderer : SDL3.Renderer; Texture : SDL3.Texture) is
       function SDL_Render_Texture
         (Renderer           : SDL3.Renderer;
          Texture            : SDL3.Texture;
          Src_Rect, Dst_Rect : System.Address) return C.C_bool
         with Import => True, Convention => C, External_Name => "SDL_RenderTexture";
    begin
-      if SDL_Render_Texture (Renderer, Texture, Src_Rect'Address, Dst_Rect'Address) /= C.True then
+      if SDL_Render_Texture
+          (Renderer, Texture, System.Null_Address, System.Null_Address) /= C.True then
          null; -- TODO: Do we care if this fails?
       end if;
    end Render_Texture;

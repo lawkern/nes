@@ -41,6 +41,13 @@ package body PPU is
       PPU.Memory (Address) := Value;
    end Write;
 
+   procedure Render_Clear (Backbuffer : Texture; Color : U32) is
+   begin
+      for Index in 0 .. (Backbuffer.Width * Backbuffer.Height) - 1 loop
+         Backbuffer.Pixels.all (Index) := Color;
+      end loop;
+   end Render_Clear;
+
    procedure Render_Pattern_Table (Backbuffer : Texture) is
       procedure Render_Tile (Base : U14; Screen_X, Screen_Y : Integer) is
          Plane0, Plane1, Bit0, Bit1 : U8;

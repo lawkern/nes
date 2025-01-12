@@ -188,7 +188,7 @@ package SDL3 is
      (Texture : SDL3.Texture; Pixels : Pixel_Access; Pitch : Integer);
 
    procedure Render_Texture
-     (Renderer : SDL3.Renderer; Texture : SDL3.Texture; Src_Rect, Dst_Rect : in out FRect);
+     (Renderer : SDL3.Renderer; Texture : SDL3.Texture);
 
    type Scale_Mode is (Scale_Mode_Nearest, Scale_Mode_Linear);
    for Scale_Mode use (Scale_Mode_Nearest => 0, Scale_Mode_Linear => 1);
