@@ -17,31 +17,38 @@ package CPU is
    Index_Register_X : U8;
    Index_Register_Y : U8;
 
-   -- NOTE: Processor Status.
-   Carry_Flag        : Boolean;
-   Zero_Flag         : Boolean;
-   Interrupt_Disable : Boolean;
-   Decimal_Mode      : Boolean;
-   Break_Command     : Boolean;
-   Overflow_Flag     : Boolean;
-   Negative_Flag     : Boolean;
+   -- NOTE: Processor Status
+   type Processor_Status (As_Byte : Boolean := True) is record
+      case As_Byte is
+         when True =>
+            Byte_Value : U8;
+         when False =>
+            Carry             : Boolean;
+            Zero              : Boolean;
+            Interrupt_Disable : Boolean;
+            Decimal           : Boolean;
+            Break_Command     : Boolean;
+            Unused            : Boolean := True;
+            Overflow          : Boolean;
+            Negative          : Boolean;
+      end case;
+   end record
+   with Unchecked_Union => True, Size => 8;
 
-   Carry_Flag_Bit        : constant U8 := 2#0000_0001#;
-   Zero_Flag_Bit         : constant U8 := 2#0000_0010#;
-   Interrupt_Disable_Bit : constant U8 := 2#0000_0100#;
-   Decimal_Mode_Bit      : constant U8 := 2#0000_1000#;
-   Break_Command_Bit     : constant U8 := 2#0001_0000#;
-   Overflow_Flag_Bit     : constant U8 := 2#0100_0000#;
-   Negative_Flag_Bit     : constant U8 := 2#1000_0000#;
+   for Processor_Status use record
+      Byte_Value        at 0 range 0 .. 7;
+      --
+      Carry             at 0 range 0 .. 0;
+      Zero              at 0 range 1 .. 1;
+      Interrupt_Disable at 0 range 2 .. 2;
+      Decimal           at 0 range 3 .. 3;
+      Unused            at 0 range 4 .. 4;
+      Break_Command     at 0 range 5 .. 5;
+      Overflow          at 0 range 6 .. 6;
+      Negative          at 0 range 7 .. 7;
+   end record;
 
-   Carry_Flag_Mask        : constant U8 := not Carry_Flag_Bit;
-   Zero_Flag_Mask         : constant U8 := not Zero_Flag_Bit;
-   Interrupt_Disable_Mask : constant U8 := not Interrupt_Disable_Bit;
-   Decimal_Mode_Mask      : constant U8 := not Decimal_Mode_Bit;
-   Break_Command_Mask     : constant U8 := not Break_Command_Bit;
-   Overflow_Flag_Mask     : constant U8 := not Overflow_Flag_Bit;
-   Negative_Flag_Mask     : constant U8 := not Negative_Flag_Bit;
-
+   Flags : Processor_Status;
 
    -- NOTE: CPU memory.
    type Address_Space is array (U16) of U8;

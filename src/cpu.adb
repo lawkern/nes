@@ -16,23 +16,24 @@ package body CPU is
       -- $C000 to bypass the reset vector
       Program_Counter := 16#C000#;
 
-      Stack_Pointer   := 16#FD#;
+      Stack_Pointer := 16#FD#;
 
-      Carry_Flag        := False;
-      Zero_Flag         := False;
-      Interrupt_Disable := True;
-      Decimal_Mode      := False;
-      Overflow_Flag     := False;
-      Negative_Flag     := False;
+      Flags.Carry             := False;
+      Flags.Zero              := False;
+      Flags.Interrupt_Disable := True;
+      Flags.Decimal           := False;
+      Flags.Overflow          := False;
+      Flags.Negative          := False;
 
       Total_Cycles_Elapsed := 7;
    end Power_On;
 
    procedure Reset is
    begin
-      Program_Counter   := 16#FFFC#;
-      Stack_Pointer     := Stack_Pointer - 3;
-      Interrupt_Disable := True;
+      Program_Counter := 16#FFFC#;
+      Stack_Pointer   := Stack_Pointer - 3;
+
+      Flags.Interrupt_Disable := True;
 
       Total_Cycles_Elapsed := 0;
    end Reset;
@@ -74,13 +75,17 @@ package body CPU is
    ---------------------------------------------------------------------------
 
    function Negative (Value : U8) return Boolean is
+      Converter : Processor_Status;
    begin
-      return (Value and Negative_Flag_Bit) /= 0;
+      Converter.Byte_Value := Value;
+      return Converter.Negative;
    end Negative;
 
    function Overflow (Value : U8) return Boolean is
+      Converter : Processor_Status;
    begin
-      return (Value and Overflow_Flag_Bit) /= 0;
+      Converter.Byte_Value := Value;
+      return Converter.Overflow;
    end Overflow;
 
    -----------------------------------------------------------------------------
@@ -255,24 +260,24 @@ package body CPU is
       begin
          Accumulator := Value;
 
-         Zero_Flag     := (Value = 0);
-         Negative_Flag := Negative (Value);
+         Flags.Zero     := (Value = 0);
+         Flags.Negative := Negative (Value);
       end LDA;
 
       procedure LDX (Value : U8) is
       begin
          Index_Register_X := Value;
 
-         Zero_Flag     := (Value = 0);
-         Negative_Flag := Negative (Value);
+         Flags.Zero     := (Value = 0);
+         Flags.Negative := Negative (Value);
       end LDX;
 
       procedure LDY (Value : U8) is
       begin
          Index_Register_Y := Value;
 
-         Zero_Flag     := (Value = 0);
-         Negative_Flag := Negative (Value);
+         Flags.Zero     := (Value = 0);
+         Flags.Negative := Negative (Value);
       end LDY;
 
       procedure STA (Address : U16) is
@@ -296,32 +301,32 @@ package body CPU is
       begin
          Index_Register_X := Accumulator;
 
-         Zero_Flag     := (Index_Register_X = 0);
-         Negative_Flag := Negative (Index_Register_X);
+         Flags.Zero     := (Index_Register_X = 0);
+         Flags.Negative := Negative (Index_Register_X);
       end TAX;
 
       procedure TAY is
       begin
          Index_Register_Y := Accumulator;
 
-         Zero_Flag     := (Index_Register_Y = 0);
-         Negative_Flag := Negative (Index_Register_Y);
+         Flags.Zero     := (Index_Register_Y = 0);
+         Flags.Negative := Negative (Index_Register_Y);
       end TAY;
 
       procedure TSX is
       begin
          Index_Register_X := Stack_Pointer;
 
-         Zero_Flag     := (Index_Register_X = 0);
-         Negative_Flag := Negative (Index_Register_X);
+         Flags.Zero     := (Index_Register_X = 0);
+         Flags.Negative := Negative (Index_Register_X);
       end TSX;
 
       procedure TXA is
       begin
          Accumulator := Index_Register_X;
 
-         Zero_Flag     := (Accumulator = 0);
-         Negative_Flag := Negative (Accumulator);
+         Flags.Zero     := (Accumulator = 0);
+         Flags.Negative := Negative (Accumulator);
       end TXA;
 
       procedure TXS is
@@ -333,8 +338,8 @@ package body CPU is
       begin
          Accumulator := Index_Register_Y;
 
-         Zero_Flag     := (Accumulator = 0);
-         Negative_Flag := Negative (Accumulator);
+         Flags.Zero     := (Accumulator = 0);
+         Flags.Negative := Negative (Accumulator);
       end TYA;
 
       -------------------------------------------------------------------
@@ -344,15 +349,15 @@ package body CPU is
          Result   : U8;
       begin
          Result16 := U16 (Accumulator) + U16 (Value);
-         if Carry_Flag then
+         if Flags.Carry then
             Result16 := Result16 + 1;
          end if;
          Result := U8 (Result16 mod 256);
 
-         Carry_Flag    := (Result16 > 16#FF#);
-         Zero_Flag     := (Result = 0);
-         Overflow_Flag := ((Result xor Accumulator) and (Result xor Value) and 16#80#) /= 0;
-         Negative_Flag := Negative (Result);
+         Flags.Carry    := (Result16 > 16#FF#);
+         Flags.Zero     := (Result = 0);
+         Flags.Overflow := ((Result xor Accumulator) and (Result xor Value) and 16#80#) /= 0;
+         Flags.Negative := Negative (Result);
 
          Accumulator := Result;
       end ADC;
@@ -361,14 +366,14 @@ package body CPU is
          Result : U8;
       begin
          Result := Accumulator + (not Value);
-         if Carry_Flag then
+         if Flags.Carry then
             Result := Result + 1;
          end if;
 
-         Carry_Flag    := (not (Result > 127));
-         Zero_Flag     := (Result = 0);
-         Overflow_Flag := ((Result xor Accumulator) and (Result xor (not Value)) and 16#80#) /= 0;
-         Negative_Flag := Negative (Result);
+         Flags.Carry    := (not (Result > 127));
+         Flags.Zero     := (Result = 0);
+         Flags.Overflow := ((Result xor Accumulator) and (Result xor (not Value)) and 16#80#) /= 0;
+         Flags.Negative := Negative (Result);
 
          Accumulator := Result;
       end SBC;
@@ -379,8 +384,8 @@ package body CPU is
          Value := Read (Address) + 1;
          Write (Address, Value);
 
-         Zero_Flag     := (Value = 0);
-         Negative_Flag := Negative (Value);
+         Flags.Zero     := (Value = 0);
+         Flags.Negative := Negative (Value);
       end INC;
 
       procedure DEC (Address : U16) is
@@ -389,40 +394,40 @@ package body CPU is
          Value := Read (Address) - 1;
          Write (Address, Value);
 
-         Zero_Flag     := (Value = 0);
-         Negative_Flag := Negative (Value);
+         Flags.Zero     := (Value = 0);
+         Flags.Negative := Negative (Value);
       end DEC;
 
       procedure INX is
       begin
          Index_Register_X := Index_Register_X + 1;
 
-         Zero_Flag     := (Index_Register_X = 0);
-         Negative_Flag := Negative (Index_Register_X);
+         Flags.Zero     := (Index_Register_X = 0);
+         Flags.Negative := Negative (Index_Register_X);
       end INX;
 
       procedure DEX is
       begin
          Index_Register_X := Index_Register_X - 1;
 
-         Zero_Flag     := (Index_Register_X = 0);
-         Negative_Flag := Negative (Index_Register_X);
+         Flags.Zero     := (Index_Register_X = 0);
+         Flags.Negative := Negative (Index_Register_X);
       end DEX;
 
       procedure INY is
       begin
          Index_Register_Y := Index_Register_Y + 1;
 
-         Zero_Flag     := (Index_Register_Y = 0);
-         Negative_Flag := Negative (Index_Register_Y);
+         Flags.Zero     := (Index_Register_Y = 0);
+         Flags.Negative := Negative (Index_Register_Y);
       end INY;
 
       procedure DEY is
       begin
          Index_Register_Y := Index_Register_Y - 1;
 
-         Zero_Flag     := (Index_Register_Y = 0);
-         Negative_Flag := Negative (Index_Register_Y);
+         Flags.Zero     := (Index_Register_Y = 0);
+         Flags.Negative := Negative (Index_Register_Y);
       end DEY;
 
       ---------------------------------------------------------------
@@ -431,24 +436,24 @@ package body CPU is
       begin
          Accumulator := Accumulator and Value;
 
-         Zero_Flag     := (Accumulator = 0);
-         Negative_Flag := Negative (Accumulator);
+         Flags.Zero     := (Accumulator = 0);
+         Flags.Negative := Negative (Accumulator);
       end ANDA;
 
       procedure ORA (Value : U8) is
       begin
          Accumulator := Accumulator or Value;
 
-         Zero_Flag     := (Accumulator = 0);
-         Negative_Flag := Negative (Accumulator);
+         Flags.Zero     := (Accumulator = 0);
+         Flags.Negative := Negative (Accumulator);
       end ORA;
 
       procedure EOR (Value : U8) is
       begin
          Accumulator := Accumulator xor Value;
 
-         Zero_Flag     := (Accumulator = 0);
-         Negative_Flag := Negative (Accumulator);
+         Flags.Zero     := (Accumulator = 0);
+         Flags.Negative := Negative (Accumulator);
       end EOR;
 
       procedure BIT (Value : U8) is
@@ -456,9 +461,9 @@ package body CPU is
       begin
          Result := Accumulator and Value;
 
-         Zero_Flag     := (Result = 0);
-         Overflow_Flag := Overflow (Value);
-         Negative_Flag := Negative (Value);
+         Flags.Zero     := (Result = 0);
+         Flags.Overflow := Overflow (Value);
+         Flags.Negative := Negative (Value);
       end BIT;
 
       --------------------------------------------------------------
@@ -472,9 +477,9 @@ package body CPU is
          Previous    := Accumulator;
          Accumulator := Shift_Left (Previous, 1);
 
-         Carry_Flag    := (Previous and 2#1000_0000#) /= 0;
-         Zero_Flag     := (Accumulator = 0);
-         Negative_Flag := Negative (Accumulator);
+         Flags.Carry    := (Previous and 2#1000_0000#) /= 0;
+         Flags.Zero     := (Accumulator = 0);
+         Flags.Negative := Negative (Accumulator);
       end ASL;
 
       procedure ASL (Address : U16) is
@@ -484,9 +489,9 @@ package body CPU is
          Result   := Shift_Left (Previous, 1);
          Write (Address, Result);
 
-         Carry_Flag    := (Previous and 2#1000_0000#) /= 0;
-         Zero_Flag     := (Result = 0);
-         Negative_Flag := Negative (Result);
+         Flags.Carry    := (Previous and 2#1000_0000#) /= 0;
+         Flags.Zero     := (Result = 0);
+         Flags.Negative := Negative (Result);
       end ASL;
 
       procedure LSR is
@@ -495,9 +500,9 @@ package body CPU is
          Previous    := Accumulator;
          Accumulator := Shift_Right (Previous, 1);
 
-         Carry_Flag    := (Previous and 2#0000_0001#) /= 0;
-         Zero_Flag     := (Accumulator = 0);
-         Negative_Flag := Negative (Accumulator);
+         Flags.Carry    := (Previous and 2#0000_0001#) /= 0;
+         Flags.Zero     := (Accumulator = 0);
+         Flags.Negative := Negative (Accumulator);
       end LSR;
 
       procedure LSR (Address : U16) is
@@ -507,64 +512,64 @@ package body CPU is
          Result   := Shift_Right (Previous, 1);
          Write (Address, Result);
 
-         Carry_Flag    := (Previous and 2#1000_0000#) /= 0;
-         Zero_Flag     := (Result = 0);
-         Negative_Flag := Negative (Result);
+         Flags.Carry    := (Previous and 2#1000_0000#) /= 0;
+         Flags.Zero     := (Result = 0);
+         Flags.Negative := Negative (Result);
       end LSR;
 
       procedure ROL is
          Previous, C : U8;
       begin
-         C := (if Carry_Flag then 2#0000_0001# else 2#0000_0000#);
+         C := (if Flags.Carry then 2#0000_0001# else 2#0000_0000#);
 
          Previous    := Accumulator;
          Accumulator := Shift_Left (Previous, 1) or C;
 
-         Carry_Flag    := (Previous and 2#1000_0000#) /= 0;
-         Zero_Flag     := (Accumulator = 0);
-         Negative_Flag := Negative (Accumulator);
+         Flags.Carry    := (Previous and 2#1000_0000#) /= 0;
+         Flags.Zero     := (Accumulator = 0);
+         Flags.Negative := Negative (Accumulator);
       end ROL;
 
       procedure ROL (Address : U16) is
          Result, Previous, C : U8;
       begin
-         C := (if Carry_Flag then 2#0000_0001# else 2#0000_0000#);
+         C := (if Flags.Carry then 2#0000_0001# else 2#0000_0000#);
 
          Previous := Read (Address);
          Result   := Shift_Left (Previous, 1);
          Result   := Result or C;
          Write (Address, Result);
 
-         Carry_Flag    := (Previous and 2#1000_0000#) /= 0;
-         Zero_Flag     := (Result = 0);
-         Negative_Flag := Negative (Result);
+         Flags.Carry    := (Previous and 2#1000_0000#) /= 0;
+         Flags.Zero     := (Result = 0);
+         Flags.Negative := Negative (Result);
       end ROL;
 
       procedure ROR is
          Previous, C : U8;
       begin
-         C := (if Carry_Flag then 2#1000_0000# else 2#0000_0000#);
+         C := (if Flags.Carry then 2#1000_0000# else 2#0000_0000#);
 
          Previous    := Accumulator;
          Accumulator := Shift_Right (Previous, 1) or C;
 
-         Carry_Flag    := (Previous and 2#0000_0001#) /= 0;
-         Zero_Flag     := (Accumulator = 0);
-         Negative_Flag := Negative (Accumulator);
+         Flags.Carry    := (Previous and 2#0000_0001#) /= 0;
+         Flags.Zero     := (Accumulator = 0);
+         Flags.Negative := Negative (Accumulator);
       end ROR;
 
       procedure ROR (Address : U16) is
          Result, Previous, C : U8;
       begin
-         C := (if Carry_Flag then 2#1000_0000# else 2#0000_0000#);
+         C := (if Flags.Carry then 2#1000_0000# else 2#0000_0000#);
 
          Previous := Read (Address);
          Result   := Shift_Right (Previous, 1) or C;
          Write (Address, Result);
 
-         Carry_Flag    := (Previous and 2#0000_0001#) /= 0;
-         Zero_Flag     := (Result = 0);
-         Negative_Flag := Negative (Result);
+         Flags.Carry    := (Previous and 2#0000_0001#) /= 0;
+         Flags.Zero     := (Result = 0);
+         Flags.Negative := Negative (Result);
       end ROR;
 
       --------------------------------------------------------------
@@ -574,9 +579,9 @@ package body CPU is
       begin
          Result := Accumulator - Value;
 
-         Carry_Flag    := (Accumulator >= Value);
-         Zero_Flag     := (Accumulator = Value);
-         Negative_Flag := Negative (Result);
+         Flags.Carry    := (Accumulator >= Value);
+         Flags.Zero     := (Accumulator = Value);
+         Flags.Negative := Negative (Result);
       end CMP;
 
       procedure CPX (Value : U8) is
@@ -584,9 +589,9 @@ package body CPU is
       begin
          Result := Index_Register_X - Value;
 
-         Carry_Flag    := (Index_Register_X >= Value);
-         Zero_Flag     := (Index_Register_X = Value);
-         Negative_Flag := Negative (Result);
+         Flags.Carry    := (Index_Register_X >= Value);
+         Flags.Zero     := (Index_Register_X = Value);
+         Flags.Negative := Negative (Result);
       end CPX;
 
       procedure CPY (Value : U8) is
@@ -594,9 +599,9 @@ package body CPU is
       begin
          Result := Index_Register_Y - Value;
 
-         Carry_Flag    := (Index_Register_Y >= Value);
-         Zero_Flag     := (Index_Register_Y = Value);
-         Negative_Flag := Negative (Result);
+         Flags.Carry    := (Index_Register_Y >= Value);
+         Flags.Zero     := (Index_Register_Y = Value);
+         Flags.Negative := Negative (Result);
       end CPY;
 
       ---------------------------------------------------------------
@@ -617,56 +622,56 @@ package body CPU is
 
       procedure BCC (Offset : U8) is
       begin
-         if not Carry_Flag then
+         if not Flags.Carry then
             Branch (Offset);
          end if;
       end BCC;
 
       procedure BCS (Offset : U8) is
       begin
-         if Carry_Flag then
+         if Flags.Carry then
             Branch (Offset);
          end if;
       end BCS;
 
       procedure BEQ (Offset : U8) is
       begin
-         if Zero_Flag then
+         if Flags.Zero then
             Branch (Offset);
          end if;
       end BEQ;
 
       procedure BNE (Offset : U8) is
       begin
-         if not Zero_Flag then
+         if not Flags.Zero then
             Branch (Offset);
          end if;
       end BNE;
 
       procedure BPL (Offset : U8) is
       begin
-         if not Negative_Flag then
+         if not Flags.Negative then
             Branch (Offset);
          end if;
       end BPL;
 
       procedure BMI (Offset : U8) is
       begin
-         if Negative_Flag then
+         if Flags.Negative then
             Branch (Offset);
          end if;
       end BMI;
 
       procedure BVC (Offset : U8) is
       begin
-         if not Overflow_Flag then
+         if not Flags.Overflow then
             Branch (Offset);
          end if;
       end BVC;
 
       procedure BVS (Offset : U8) is
       begin
-         if Overflow_Flag then
+         if Flags.Overflow then
             Branch (Offset);
          end if;
       end BVS;
@@ -689,7 +694,7 @@ package body CPU is
 
       procedure BRK is
       begin
-         Break_Command := True;
+         Flags.Break_Command := True;
       end BRK;
 
       procedure RTS is
@@ -699,16 +704,8 @@ package body CPU is
       end RTS;
 
       procedure RTI is
-         Flags : U8;
       begin
-         Flags := Pop8;
-
-         Carry_Flag        := (Flags and Carry_Flag_Bit) /= 0;
-         Zero_Flag         := (Flags and Zero_Flag_Bit) /= 0;
-         Interrupt_Disable := (Flags and Interrupt_Disable_Bit) /= 0;
-         Decimal_Mode      := (Flags and Decimal_Mode_Bit) /= 0;
-         Overflow_Flag     := (Flags and Overflow_Flag_Bit) /= 0;
-         Negative_Flag     := (Flags and Negative_Flag_Bit) /= 0;
+         Flags.Byte_Value := Pop8;
 
          Jump_Occurred        := True;
          Next_Program_Counter := Pop16;
@@ -722,76 +719,55 @@ package body CPU is
       end PHA;
 
       procedure PHP is
-         function Pack_Flags return U8 is
-            Result : U8 := 2#0011_0000#;
-         begin
-            -- TODO: Pack the flag bits more intelligently.
-            Result := (if Carry_Flag then (Result or Carry_Flag_Bit) else Result);
-            Result := (if Zero_Flag then (Result or Zero_Flag_Bit) else Result);
-            Result := (if Interrupt_Disable then (Result or Interrupt_Disable_Bit) else Result);
-            Result := (if Decimal_Mode then (Result or Decimal_Mode_Bit) else Result);
-            Result := (if Overflow_Flag then (Result or Overflow_Flag_Bit) else Result);
-            Result := (if Negative_Flag then (Result or Negative_Flag_Bit) else Result);
-
-            return Result;
-         end Pack_Flags;
       begin
-         Push8 (Pack_Flags);
+         Push8 (Flags.Byte_Value);
       end PHP;
 
       procedure PLA is
       begin
          Accumulator := Pop8;
 
-         Zero_Flag     := (Accumulator = 0);
-         Negative_Flag := (Shift_Right (Accumulator, 7) and 1) = 1;
+         Flags.Zero     := (Accumulator = 0);
+         Flags.Negative := (Shift_Right (Accumulator, 7) and 1) = 1;
       end PLA;
 
       procedure PLP is
-         Flags : U8;
       begin
-         Flags := Pop8;
-
-         Carry_Flag        := (Flags and Carry_Flag_Bit) /= 0;
-         Zero_Flag         := (Flags and Zero_Flag_Bit) /= 0;
-         Interrupt_Disable := (Flags and Interrupt_Disable_Bit) /= 0; -- TODO: Delay effect by one instruction.
-         Decimal_Mode      := (Flags and Decimal_Mode_Bit) /= 0;
-         Overflow_Flag     := (Flags and Overflow_Flag_Bit) /= 0;
-         Negative_Flag     := (Flags and Negative_Flag_Bit) /= 0;
+         Flags.Byte_Value := Pop8;
       end PLP;
 
       ---------------------------------------------------------------
 
       procedure CLC is
       begin
-         Carry_Flag := False;
+         Flags.Carry := False;
       end CLC;
       procedure SEC is
       begin
-         Carry_Flag := True;
+         Flags.Carry := True;
       end SEC;
 
       procedure CLI is
       begin
-         Interrupt_Disable := False;
+         Flags.Interrupt_Disable := False;
       end CLI;
       procedure SEI is
       begin
-         Interrupt_Disable := True;
+         Flags.Interrupt_Disable := True;
       end SEI;
 
       procedure CLD is
       begin
-         Decimal_Mode := False;
+         Flags.Decimal := False;
       end CLD;
       procedure SED is
       begin
-         Decimal_Mode := True;
+         Flags.Decimal := True;
       end SED;
 
       procedure CLV is
       begin
-         Overflow_Flag := False;
+         Flags.Overflow := False;
       end CLV;
 
       ---------------------------------------------------------------
@@ -871,13 +847,13 @@ package body CPU is
                Put (" ");
             end loop;
 
-            Put ("CF:" & Boolean'Pos (Carry_Flag)'Image);
-            Put (" ZF:" & Boolean'Pos (Zero_Flag)'Image);
-            Put (" ID:" & Boolean'Pos (Interrupt_Disable)'Image);
-            Put (" DM:" & Boolean'Pos (Decimal_Mode)'Image);
-            Put (" BC:" & Boolean'Pos (Break_Command)'Image);
-            Put (" OF:" & Boolean'Pos (Overflow_Flag)'Image);
-            Put (" NF:" & Boolean'Pos (Negative_Flag)'Image);
+            Put ("CF:" & Boolean'Pos (Flags.Carry)'Image);
+            Put (" ZF:" & Boolean'Pos (Flags.Zero)'Image);
+            Put (" ID:" & Boolean'Pos (Flags.Interrupt_Disable)'Image);
+            Put (" DM:" & Boolean'Pos (Flags.Decimal)'Image);
+            Put (" BC:" & Boolean'Pos (Flags.Break_Command)'Image);
+            Put (" OF:" & Boolean'Pos (Flags.Overflow)'Image);
+            Put (" NF:" & Boolean'Pos (Flags.Negative)'Image);
          end if;
 
          New_Line;
@@ -893,7 +869,7 @@ package body CPU is
       Cycles := Instructions (Instruction).Cycles;
       Bytes  := Instructions (Instruction).Bytes;
 
-      -- Print_State;
+      Print_State;
 
       case Instruction is
          when 16#EA# =>NOP;
@@ -1094,7 +1070,7 @@ package body CPU is
          Put_Line (Exception_Information (E));
          Put_Line ("CPU state at failure:");
          Print_State;
-         Break_Command := True;
+         Flags.Break_Command := True;
    end Decode_And_Execute;
 
 end CPU;

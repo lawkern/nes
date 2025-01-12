@@ -18,13 +18,16 @@ package body Platform is
    Texture  : SDL3.Texture;
 
    Frame_Count : Natural := 0;
+   Include_Log : Boolean := False;
 
    Start_Time, Next_Frame_Time, Prev_Frame_Time : Time;
 
    ----------------------------------------------------------------------------
    procedure Log (Message : String) is
    begin
-      Ada.Text_IO.Put_Line (Message);
+      if Include_Log then
+         Ada.Text_IO.Put_Line (Message);
+      end if;
    end Log;
 
    ----------------------------------------------------------------------------
@@ -56,7 +59,7 @@ package body Platform is
         (Renderer, Width, Height, Logical_Presentation_Integer_Scale);
 
       Texture := SDL3.Create_Texture (Renderer, Width, Height);
-      SDL3.Set_Texture_Scale_Mode (Texture, Scale_Mode_Linear);
+      SDL3.Set_Texture_Scale_Mode (Texture, Scale_Mode_Nearest);
 
       Frames_Per_Second  := 60;
       Frame_Time_Elapsed := Microseconds (1_000_000) / Frames_Per_Second;

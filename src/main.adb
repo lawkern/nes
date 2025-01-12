@@ -21,7 +21,7 @@ procedure Main is
       accept Start;
 
       CPU.Power_On;
-      while not CPU.Break_Command loop
+      while not CPU.Flags.Break_Command loop
          CPU.Decode_And_Execute;
       end loop;
    end CPU_Task;
