@@ -158,6 +158,19 @@ package SDL3 is
    Keycode_Y : constant Keycode := 16#0000_0079#;
    Keycode_Z : constant Keycode := 16#0000_007a#;
 
+   Keycode_F1  : constant Keycode := 16#4000_003a#;
+   Keycode_F2  : constant Keycode := 16#4000_003b#;
+   Keycode_F3  : constant Keycode := 16#4000_003c#;
+   Keycode_F4  : constant Keycode := 16#4000_003d#;
+   Keycode_F5  : constant Keycode := 16#4000_003e#;
+   Keycode_F6  : constant Keycode := 16#4000_003f#;
+   Keycode_F7  : constant Keycode := 16#4000_0040#;
+   Keycode_F8  : constant Keycode := 16#4000_0041#;
+   Keycode_F9  : constant Keycode := 16#4000_0042#;
+   Keycode_F10 : constant Keycode := 16#4000_0043#;
+   Keycode_F11 : constant Keycode := 16#4000_0044#;
+   Keycode_F12 : constant Keycode := 16#4000_0045#;
+
    type Keyboard_Event is record
       Kind      : Event_Type;
       Reserved  : Uint32;

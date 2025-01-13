@@ -96,7 +96,7 @@ package body Platform is
                            Running := False;
                            exit;
 
-                        when Keycode_F =>
+                        when Keycode_F | Keycode_F11 =>
                            if Pressed then
                               declare
                                  Currently_Fullscreen : Boolean;
