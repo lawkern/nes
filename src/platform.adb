@@ -34,7 +34,7 @@ package body Platform is
    procedure Initialize (Width, Height : Integer; Title : String) is
       Window_Width  : Integer           := Width * 2;
       Window_Height : Integer           := Height * 2;
-      Window_Flags  : SDL3.Window_Flags := 0;
+      Window_Flags  : SDL3.Window_Flags := SDL3.Window_Resizable;
 
       Use_High_DPI : Boolean := False;
    begin
@@ -96,7 +96,7 @@ package body Platform is
                            Running := False;
                            exit;
 
-                        when Keycode_Return =>
+                        when Keycode_F =>
                            if Pressed then
                               declare
                                  Currently_Fullscreen : Boolean;

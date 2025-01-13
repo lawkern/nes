@@ -120,15 +120,43 @@ package SDL3 is
    Keycode_Down   : constant Keycode := 16#4000_0051#;
    Keycode_Up     : constant Keycode := 16#4000_0052#;
 
-   Keycode_A : constant Keycode := 16#0000_0061#;
-   Keycode_D : constant Keycode := 16#0000_0064#;
-   Keycode_S : constant Keycode := 16#0000_0073#;
-   Keycode_W : constant Keycode := 16#0000_0077#;
+   Keycode_0 : constant Keycode := 16#0000_0030#;
+   Keycode_1 : constant Keycode := 16#0000_0031#;
+   Keycode_2 : constant Keycode := 16#0000_0032#;
+   Keycode_3 : constant Keycode := 16#0000_0033#;
+   Keycode_4 : constant Keycode := 16#0000_0034#;
+   Keycode_5 : constant Keycode := 16#0000_0035#;
+   Keycode_6 : constant Keycode := 16#0000_0036#;
+   Keycode_7 : constant Keycode := 16#0000_0037#;
+   Keycode_8 : constant Keycode := 16#0000_0038#;
+   Keycode_9 : constant Keycode := 16#0000_0039#;
 
+   Keycode_A : constant Keycode := 16#0000_0061#;
+   Keycode_B : constant Keycode := 16#0000_0062#;
+   Keycode_C : constant Keycode := 16#0000_0063#;
+   Keycode_D : constant Keycode := 16#0000_0064#;
+   Keycode_E : constant Keycode := 16#0000_0065#;
+   Keycode_F : constant Keycode := 16#0000_0066#;
+   Keycode_G : constant Keycode := 16#0000_0067#;
+   Keycode_H : constant Keycode := 16#0000_0068#;
    Keycode_I : constant Keycode := 16#0000_0069#;
    Keycode_J : constant Keycode := 16#0000_006a#;
    Keycode_K : constant Keycode := 16#0000_006b#;
    Keycode_L : constant Keycode := 16#0000_006c#;
+   Keycode_M : constant Keycode := 16#0000_006d#;
+   Keycode_N : constant Keycode := 16#0000_006e#;
+   Keycode_O : constant Keycode := 16#0000_006f#;
+   Keycode_P : constant Keycode := 16#0000_0070#;
+   Keycode_Q : constant Keycode := 16#0000_0071#;
+   Keycode_R : constant Keycode := 16#0000_0072#;
+   Keycode_S : constant Keycode := 16#0000_0073#;
+   Keycode_T : constant Keycode := 16#0000_0074#;
+   Keycode_U : constant Keycode := 16#0000_0075#;
+   Keycode_V : constant Keycode := 16#0000_0076#;
+   Keycode_W : constant Keycode := 16#0000_0077#;
+   Keycode_X : constant Keycode := 16#0000_0078#;
+   Keycode_Y : constant Keycode := 16#0000_0079#;
+   Keycode_Z : constant Keycode := 16#0000_007a#;
 
    type Keyboard_Event is record
       Kind      : Event_Type;
