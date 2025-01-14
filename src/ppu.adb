@@ -11,11 +11,11 @@ package body PPU is
    begin
       case Offset is
          when 0 =>
-            PPU_CTRL := Value;
+            PPU_CTRL.Byte_Value := Value;
          when 1 =>
-            PPU_MASK := Value;
+            PPU_MASK.Byte_Value := Value;
          when 2 =>
-            PPU_STATUS := Value;
+            PPU_STATUS.Byte_Value := Value;
          when 3 =>
             OAM_ADDR := Value;
          when 4 =>

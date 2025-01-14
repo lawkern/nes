@@ -16,6 +16,8 @@ package Shared is
    type S32 is new Integer_32;
    type S64 is new Integer_64;
 
+   subtype U2 is U8 range 0 .. 3;
+   subtype U5 is U8 range 0 .. 31;
    subtype U14 is U16 range 0 .. 16#3FFF#;
 
    type Pixel_Buffer is array (Natural range <>) of U32;
