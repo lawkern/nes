@@ -18,8 +18,4 @@ project Nes is
    package Compiler is
       for Default_Switches ("Ada") use Shared;
    end Compiler;
-
-   package Pretty_Printer is
-      for Default_Switches ("Ada") use ("--source-line-breaks");
-   end Pretty_Printer;
 end Nes;
