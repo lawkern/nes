@@ -1,0 +1,19 @@
+nes is an in-progress emulator for the 6502-based Nintendo Entertainment System.
+
+This project is primarily a personal exploration of the Ada programming
+language. Ada is an interesting language at first glance. I'm curious how
+ergonomic it is in practice for a small-to-medium complexity project with a
+well-defined scope. Beyond that, I just think emulators are neat.
+
+SDL3 is used for window handling and other OS interactions, so it must be
+installed somewhere visible to pkg-config. Ada bindings for SDL3 are added
+manually as needed.
+
+The build is handled by gprbuild (wrapped with a minimal Makefile). I would
+prefer to not use a dedicated build system, but I ran into various issues trying
+to use gnatmake or gcc directly. I'll look into this more at some point.
+
+I've been running this on Linux and macOS so far without real issues (SDL3 via
+Ada does not seem to respect dark mode on macOS for some reason, though a
+seemingly equivalent C++ program works as expected). I'll try Windows at some
+point too, if I feel up to using Windows 11.
