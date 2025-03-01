@@ -76,7 +76,7 @@ package body Platform is
    end Initialize;
 
    ----------------------------------------------------------------------------
-   procedure Process_Input is
+   procedure Begin_Frame is
       Event : SDL3.Event;
    begin
       while SDL3.Poll_Event (Event) loop
@@ -115,7 +115,7 @@ package body Platform is
                null;
          end case;
       end loop;
-   end Process_Input;
+   end Begin_Frame;
 
    ----------------------------------------------------------------------------
    procedure Render is
@@ -131,7 +131,7 @@ package body Platform is
    end Render;
 
    ----------------------------------------------------------------------------
-   procedure Frame_End is
+   procedure End_Frame is
    begin
       Frame_Count := Frame_Count + 1;
 
@@ -152,6 +152,5 @@ package body Platform is
       if Clock > Next_Frame_Time then
          Next_Frame_Time := Clock + Frame_Time_Elapsed;
       end if;
-   end Frame_End;
-
+   end End_Frame;
 end Platform;

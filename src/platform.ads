@@ -3,7 +3,7 @@
 --------------------------------------------------------------------------------
 
 -- NOTE: Platform acts as the interface between the operating system and the
--- actual program, providing a window to draw into, user input handline, etc.
+-- actual program, providing a window to draw into, user input handling, etc.
 
 with Ada.Real_Time; use Ada.Real_Time;
 
@@ -18,7 +18,7 @@ package Platform is
 
    procedure Log (Message : String);
    procedure Initialize (Width, Height : Integer; Title : String);
-   procedure Process_Input;
+   procedure Begin_Frame;
    procedure Render;
-   procedure Frame_End;
+   procedure End_Frame;
 end Platform;

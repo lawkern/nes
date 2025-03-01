@@ -41,13 +41,13 @@ begin
 
    Platform.Initialize (Width => 256, Height => 240, Title => "NES Emulator");
    while Platform.Running loop
-      Platform.Process_Input;
+      Platform.Begin_Frame;
 
       PPU.Render_Clear (Backbuffer, 16#0000_00FF#);
       PPU.Render_Pattern_Table (Backbuffer);
 
       Platform.Render;
-      Platform.Frame_End;
+      Platform.End_Frame;
    end loop;
 
 end Main;
